@@ -1,6 +1,7 @@
 com\examportal\controller\HrController.class
 com\examportal\enums\Role.class
 com\examportal\entity\Candidate$CandidateBuilder.class
+com\examportal\controller\HrController$5.class
 com\examportal\entity\EligibleCandidate$EligibleCandidateBuilder.class
 com\examportal\security\JwtUtil.class
 com\examportal\dto\CandidateResponse.class
@@ -17,6 +18,7 @@ com\examportal\service\AuthService.class
 com\examportal\repository\NotEligibleCandidateRepository.class
 com\examportal\repository\CandidateRepository.class
 com\examportal\security\CustomUserDetailsService.class
+com\examportal\controller\HrController$4.class
 com\examportal\exception\ResourceNotFoundException.class
 com\examportal\exception\GlobalExceptionHandler.class
 com\examportal\serviceImpl\OtpServiceImpl$OtpData.class
@@ -47,5 +49,6 @@ com\examportal\repository\UserRepository.class
 com\examportal\entity\EligibleCandidate.class
 com\examportal\entity\NotEligibleCandidate.class
 com\examportal\repository\EligibleCandidateRepository.class
+com\examportal\controller\HrController$6.class
 com\examportal\controller\CandidateController.class
 com\examportal\enums\ExamStatus.class

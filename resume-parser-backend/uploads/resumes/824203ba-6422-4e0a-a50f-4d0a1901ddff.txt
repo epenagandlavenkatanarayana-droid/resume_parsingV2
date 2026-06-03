@@ -1,0 +1,9 @@
+John Doe
+john.doe@example.com
+1234567890
+Software Developer with experience in React and Spring Boot.
+Education:
+Bachelor of Technology in Computer Science, JNTU, 2024, CGPA 8.5
+Experience:
+Software Engineer at Tech Solutions, 2 Years
+Skills: Java, Spring Boot, React, JavaScript

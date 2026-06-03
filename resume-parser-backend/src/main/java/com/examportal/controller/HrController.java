@@ -45,14 +45,22 @@ public class HrController {
             res.setCandidateStatus(c.getCandidateStatus());
             res.setShortlisted(c.isShortlisted());
             
-            // 1. Map Education Details
+            // 1. Map Education Details (remap graduation_year to graduationYear)
             try {
                 if (c.getEducationDetails() != null && !c.getEducationDetails().isEmpty()) {
-                    List<Map<String, Object>> eduList = objectMapper.readValue(
+                    List<Map<String, Object>> rawEduList = objectMapper.readValue(
                             c.getEducationDetails(), 
                             new TypeReference<List<Map<String, Object>>>() {}
                     );
-                    res.setEducation(eduList);
+                    List<Map<String, Object>> formattedEduList = new ArrayList<>();
+                    for (Map<String, Object> rawEdu : rawEduList) {
+                        Map<String, Object> formattedEdu = new HashMap<>(rawEdu);
+                        if (rawEdu.containsKey("graduation_year")) {
+                            formattedEdu.put("graduationYear", rawEdu.get("graduation_year"));
+                        }
+                        formattedEduList.add(formattedEdu);
+                    }
+                    res.setEducation(formattedEduList);
                 } else {
                     res.setEducation(new ArrayList<>());
                 }
@@ -60,11 +68,11 @@ public class HrController {
                 res.setEducation(new ArrayList<>());
             }
 
-            // 2. Map Experience Details (remap job_title to jobTitle)
+            // 2. Map Experience Details (remap job_title to jobTitle, start_date to startDate, end_date to endDate)
             try {
                 if (c.getExperienceDetails() != null && !c.getExperienceDetails().isEmpty()) {
                     List<Map<String, Object>> rawExpList = objectMapper.readValue(
-                            c.getExperienceDetails(), 
+                            c.getExperienceDetails(),
                             new TypeReference<List<Map<String, Object>>>() {}
                     );
                     List<Map<String, Object>> formattedExpList = new ArrayList<>();
@@ -72,6 +80,12 @@ public class HrController {
                         Map<String, Object> formattedExp = new HashMap<>(rawExp);
                         if (rawExp.containsKey("job_title")) {
                             formattedExp.put("jobTitle", rawExp.get("job_title"));
+                        }
+                        if (rawExp.containsKey("start_date")) {
+                            formattedExp.put("startDate", rawExp.get("start_date"));
+                        }
+                        if (rawExp.containsKey("end_date")) {
+                            formattedExp.put("endDate", rawExp.get("end_date"));
                         }
                         formattedExpList.add(formattedExp);
                     }
@@ -82,6 +96,7 @@ public class HrController {
             } catch (Exception ex) {
                 res.setExperience(new ArrayList<>());
             }
+                // duplicate block removed
 
             // 3. Map Skills list of objects
             try {
@@ -102,6 +117,51 @@ public class HrController {
                 }
             } catch (Exception ex) {
                 res.setSkills(new ArrayList<>());
+            }
+
+            // 4. Map Projects list
+            try {
+                if (c.getProjects() != null && !c.getProjects().isEmpty()) {
+                    List<String> projectsList = objectMapper.readValue(
+                            c.getProjects(), 
+                            new TypeReference<List<String>>() {}
+                    );
+                    res.setProjects(projectsList);
+                } else {
+                    res.setProjects(new ArrayList<>());
+                }
+            } catch (Exception ex) {
+                res.setProjects(new ArrayList<>());
+            }
+
+            // 5. Map Certifications list
+            try {
+                if (c.getCertifications() != null && !c.getCertifications().isEmpty()) {
+                    List<String> certificationsList = objectMapper.readValue(
+                            c.getCertifications(), 
+                            new TypeReference<List<String>>() {}
+                    );
+                    res.setCertifications(certificationsList);
+                } else {
+                    res.setCertifications(new ArrayList<>());
+                }
+            } catch (Exception ex) {
+                res.setCertifications(new ArrayList<>());
+            }
+
+            // 6. Map Languages list
+            try {
+                if (c.getLanguages() != null && !c.getLanguages().isEmpty()) {
+                    List<String> languagesList = objectMapper.readValue(
+                            c.getLanguages(), 
+                            new TypeReference<List<String>>() {}
+                    );
+                    res.setLanguages(languagesList);
+                } else {
+                    res.setLanguages(new ArrayList<>());
+                }
+            } catch (Exception ex) {
+                res.setLanguages(new ArrayList<>());
             }
 
             responseList.add(res);

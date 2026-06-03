@@ -248,51 +248,11 @@ public class ResumeParserServiceImpl implements ResumeParserService {
     }
 
     private String callGeminiAPI(String text, String jobDescription) {
-        if (geminiApiKey == null || geminiApiKey.isEmpty() || "YOUR_GEMINI_API_KEY_HERE".equals(geminiApiKey)) {
-            // Vary mock skills based on keywords present in the resume text
-            String textLower = text.toLowerCase();
-            String mockSkills = "[\"Java\", \"Spring Boot\", \"MySQL\"]";
-            String mockSummary = "Experienced Java/Spring Boot Backend Developer.";
-            String mockCertifications = "[\"Oracle Certified Professional Java SE Developer\"]";
-            
-            if (textLower.contains("react") || textLower.contains("javascript") || textLower.contains("frontend") || textLower.contains("html")) {
-                mockSkills = "[\"JavaScript\", \"React\", \"Tailwind CSS\", \"Vite\"]";
-                mockSummary = "Creative Frontend React Developer passionate about building user interfaces.";
-                mockCertifications = "[\"Meta Front-End Developer Professional Certificate\"]";
-            } else if (textLower.contains("python") || textLower.contains("django") || textLower.contains("data")) {
-                mockSkills = "[\"Python\", \"Django\", \"PostgreSQL\", \"Machine Learning\"]";
-                mockSummary = "Data-focused Python Developer experienced in web application backends and analytical processing.";
-                mockCertifications = "[\"Google Data Analytics Professional Certificate\"]";
-            }
-
-            return "{\n" +
-                "  \"full_name\": \"\",\n" +
-                "  \"email\": \"\",\n" +
-                "  \"phone\": \"\",\n" +
-                "  \"location\": \"Hyderabad\",\n" +
-                "  \"linkedin\": \"https://linkedin.com/in/candidate\",\n" +
-                "  \"professional_summary\": \"" + mockSummary + "\",\n" +
-                "  \"education_details\": [\n" +
-                "    {\n" +
-                "      \"degree\": \"Bachelor of Technology\",\n" +
-                "      \"institution\": \"JNTU\",\n" +
-                "      \"graduation_year\": \"2024\"\n" +
-                "    }\n" +
-                "  ],\n" +
-                "  \"experience_details\": [\n" +
-                "    {\n" +
-                "      \"company\": \"Tech Solutions\",\n" +
-                "      \"job_title\": \"Software Engineer\",\n" +
-                "      \"duration\": \"2 Years\",\n" +
-                "      \"responsibilities\": [\"Designing software solutions\", \"Performing codebase unit testing\"]\n" +
-                "    }\n" +
-                "  ],\n" +
-                "  \"skills\": " + mockSkills + ",\n" +
-                "  \"certifications\": " + mockCertifications + ",\n" +
-                "  \"projects\": [\"ATS System Development\"],\n" +
-                "  \"languages\": [\"English\", \"Hindi\"],\n" +
-                "  \"total_experience\": \"2 Years\"\n" +
-                "}";
+        if (geminiApiKey == null || geminiApiKey.trim().isEmpty() || "YOUR_GEMINI_API_KEY_HERE".equals(geminiApiKey)) {
+            // Log a clear warning — the app still works using a basic text-based extraction fallback
+            System.err.println("====== [WARNING] Gemini API key is NOT configured. Using basic text extraction fallback. ======");
+            System.err.println("====== Set 'app.gemini.api-key' in application.properties with your real Gemini API key. ======");
+            return buildFallbackJson(text);
         }
 
         String prompt = "You are an expert Resume Screening and Information Extraction AI.\n\n" +
@@ -307,8 +267,8 @@ public class ResumeParserServiceImpl implements ResumeParserService {
                 "  \"location\": \"\",\n" +
                 "  \"linkedin\": \"\",\n" +
                 "  \"professional_summary\": \"\",\n" +
-                "  \"education_details\": [{\"degree\": \"\", \"institution\": \"\", \"graduation_year\": \"\"}],\n" +
-                "  \"experience_details\": [{\"company\": \"\", \"job_title\": \"\", \"duration\": \"\", \"responsibilities\": []}],\n" +
+                "  \"education_details\": [{\"degree\": \"\", \"specialization\": \"\", \"institution\": \"\", \"graduation_year\": \"\", \"cgpa\": \"\"}],\n" +
+                "  \"experience_details\": [{\"company\": \"\", \"job_title\": \"\", \"start_date\": \"\", \"end_date\": \"\", \"duration\": \"\", \"responsibilities\": []}],\n" +
                 "  \"skills\": [],\n" +
                 "  \"certifications\": [],\n" +
                 "  \"projects\": [],\n" +
@@ -514,5 +474,53 @@ public class ResumeParserServiceImpl implements ResumeParserService {
         if (totalScore < 0) totalScore = 0;
 
         return totalScore;
+    }
+
+    /**
+     * Fallback used when no Gemini API key is configured.
+     * Performs basic regex extraction of real values from the resume text.
+     * Returns a structured JSON with what it can find — no hardcoded dummy data.
+     */
+    private String buildFallbackJson(String text) {
+        // Extract email
+        String email = "";
+        java.util.regex.Matcher emailMatcher = java.util.regex.Pattern
+            .compile("[a-zA-Z0-9._%+\\-]+@[a-zA-Z0-9.\\-]+\\.[a-zA-Z]{2,}").matcher(text);
+        if (emailMatcher.find()) email = emailMatcher.group();
+
+        // Extract phone (10-digit Indian mobile or international)
+        String phone = "";
+        java.util.regex.Matcher phoneMatcher = java.util.regex.Pattern
+            .compile("(?:\\+91[\\s-]?)?[6-9]\\d{9}|\\d{10}").matcher(text);
+        if (phoneMatcher.find()) phone = phoneMatcher.group().replaceAll("[\\s-]", "");
+
+        // Extract LinkedIn URL
+        String linkedin = "";
+        java.util.regex.Matcher linkedinMatcher = java.util.regex.Pattern
+            .compile("https?://(?:www\\.)?linkedin\\.com/in/[a-zA-Z0-9\\-_%]+").matcher(text);
+        if (linkedinMatcher.find()) linkedin = linkedinMatcher.group();
+
+        try {
+            com.fasterxml.jackson.databind.node.ObjectNode root = objectMapper.createObjectNode();
+            root.put("full_name", "");
+            root.put("email", email);
+            root.put("phone", phone);
+            root.put("location", "");
+            root.put("linkedin", linkedin);
+            root.put("professional_summary", "");
+            root.set("education_details", objectMapper.createArrayNode());
+            root.set("experience_details", objectMapper.createArrayNode());
+            root.set("skills", objectMapper.createArrayNode());
+            root.set("certifications", objectMapper.createArrayNode());
+            root.set("projects", objectMapper.createArrayNode());
+            root.set("languages", objectMapper.createArrayNode());
+            root.put("total_experience", "");
+            return objectMapper.writeValueAsString(root);
+        } catch (Exception e) {
+            return "{\"full_name\":\"\",\"email\":\"" + email + "\",\"phone\":\"" + phone +
+                   "\",\"location\":\"\",\"linkedin\":\"\",\"professional_summary\":\"\"," +
+                   "\"education_details\":[],\"experience_details\":[],\"skills\":[]," +
+                   "\"certifications\":[],\"projects\":[],\"languages\":[],\"total_experience\":\"\"}";
+        }
     }
 }

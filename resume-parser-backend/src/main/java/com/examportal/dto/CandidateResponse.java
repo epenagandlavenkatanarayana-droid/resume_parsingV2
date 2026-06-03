@@ -16,6 +16,9 @@ public class CandidateResponse {
     private List<Map<String, Object>> education;
     private List<Map<String, Object>> experience;
     private List<Map<String, String>> skills;
+    private List<String> projects;
+    private List<String> certifications;
+    private List<String> languages;
     private String totalYearsExperience;
     private Integer atsScore;
     private String candidateStatus;

@@ -263,6 +263,16 @@ const HrDashboard = () => {
                                   <p className="text-slate-400 mt-1">
                                     {exp.startDate || 'N/A'} – {exp.endDate || 'Present'} · {exp.duration}
                                   </p>
+                                  {exp.responsibilities && exp.responsibilities.length > 0 && (
+                                    <div className="mt-2 text-slate-650 border-t border-slate-100 pt-2">
+                                      <p className="font-semibold text-[10px] uppercase tracking-wider text-slate-400 mb-1">Responsibilities:</p>
+                                      <ul className="list-disc list-inside space-y-1 text-slate-650">
+                                        {exp.responsibilities.map((resp, rIdx) => (
+                                          <li key={rIdx} className="pl-1 text-[11px] leading-relaxed">{resp}</li>
+                                        ))}
+                                      </ul>
+                                    </div>
+                                  )}
                                 </div>
                               ))}
                             </div>
@@ -281,7 +291,7 @@ const HrDashboard = () => {
                               {profile.education.map((edu, idx) => (
                                 <div key={idx} className="bg-white p-3 rounded-lg border border-slate-100 text-xs">
                                   <p className="font-semibold text-slate-800">{edu.degree}{edu.specialization ? ` – ${edu.specialization}` : ''}</p>
-                                  <p className="text-slate-500 mt-0.5">{edu.institution}</p>
+                                  <p className="text-slate-500 mt-0.5">{edu.institution}{edu.graduationYear ? ` (${edu.graduationYear})` : ''}</p>
                                   {edu.cgpa && <p className="text-slate-400 mt-0.5">CGPA: {edu.cgpa}</p>}
                                 </div>
                               ))}
@@ -323,6 +333,60 @@ const HrDashboard = () => {
                             <p className="text-xs text-slate-500 bg-white p-3 rounded-lg border border-slate-100 leading-relaxed">
                               {profile.professionalSummary}
                             </p>
+                          </div>
+                        )}
+
+                        {/* Projects */}
+                        {profile.projects && profile.projects.length > 0 && (
+                          <div>
+                            <h4 className="font-bold text-slate-700 text-sm flex items-center gap-2 mb-2">
+                              <BiCodeAlt className="text-blue-500" /> Projects
+                            </h4>
+                            <div className="space-y-1.5">
+                              {profile.projects.map((proj, idx) => (
+                                <div key={idx} className="bg-white p-2.5 rounded-lg border border-slate-100 text-xs text-slate-650 leading-relaxed">
+                                  {proj}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Certifications */}
+                        {profile.certifications && profile.certifications.length > 0 && (
+                          <div>
+                            <h4 className="font-bold text-slate-700 text-sm flex items-center gap-2 mb-2">
+                              <BiAward className="text-amber-500" /> Certifications
+                            </h4>
+                            <div className="flex flex-wrap gap-2">
+                              {profile.certifications.map((cert, idx) => (
+                                <span
+                                  key={idx}
+                                  className="px-2.5 py-1 bg-white border border-amber-100 text-amber-700 text-xs rounded-full shadow-sm font-medium"
+                                >
+                                  {cert}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Languages */}
+                        {profile.languages && profile.languages.length > 0 && (
+                          <div>
+                            <h4 className="font-bold text-slate-700 text-sm flex items-center gap-2 mb-2">
+                              <BiBookOpen className="text-violet-500" /> Languages
+                            </h4>
+                            <div className="flex flex-wrap gap-2">
+                              {profile.languages.map((lang, idx) => (
+                                <span
+                                  key={idx}
+                                  className="px-2.5 py-1 bg-white border border-violet-100 text-violet-700 text-xs rounded-full shadow-sm font-medium"
+                                >
+                                  {lang}
+                                </span>
+                              ))}
+                            </div>
                           </div>
                         )}
                       </div>
