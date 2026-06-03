@@ -345,7 +345,7 @@ public class ResumeParserServiceImpl implements ResumeParserService {
         }
     }
 
-    private int calculateDeterministicAtsScore(
+    public int calculateDeterministicAtsScore(
             String resumeText, 
             String jobDescription, 
             String totalExperience, 

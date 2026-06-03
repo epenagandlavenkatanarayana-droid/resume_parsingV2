@@ -59,7 +59,9 @@ const Login = () => {
       login(user, token);
       toast.success('Login successfully');
       
-      if (role === 'ADMIN' || role === 'HR') {
+      if (role === 'ADMIN') {
+        navigate('/admin/dashboard');
+      } else if (role === 'HR') {
         navigate('/hr/dashboard');
       } else {
         navigate('/upload-resume');

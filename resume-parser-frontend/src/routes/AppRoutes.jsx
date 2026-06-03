@@ -1,8 +1,9 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import ProtectedRoute from '../components/ProtectedRoute';
 import HrLayout from '../layouts/HrLayout';
+import AdminLayout from '../layouts/AdminLayout';
 
-// Auth Pages
+import AdminDashboard from '../pages/admin/AdminDashboard';
 import Login from '../pages/auth/Login';
 
 // HR Pages
@@ -30,6 +31,19 @@ const AppRoutes = () => {
       >
         <Route index element={<Navigate to="/hr/dashboard" replace />} />
         <Route path="dashboard" element={<HrDashboard />} />
+      </Route>
+
+      {/* Admin Routes */}
+      <Route
+        path="/admin"
+        element={
+          <ProtectedRoute roleRequired={['ADMIN']}>
+            <AdminLayout />
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<Navigate to="/admin/dashboard" replace />} />
+        <Route path="dashboard" element={<AdminDashboard />} />
       </Route>
 
       {/* Fallback */}

@@ -1,8 +1,10 @@
-import { useState, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { BiUser, BiEnvelope, BiPhone, BiCloudUpload, BiFile, BiCheck, BiX, BiBrain, BiTargetLock, BiBarChartAlt2, BiTimeFive, BiLockAlt, BiCheckShield, BiChip, BiCheckCircle, BiErrorCircle } from 'react-icons/bi';
+import { useState, useRef, useEffect, useContext } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { BiUser, BiEnvelope, BiPhone, BiCloudUpload, BiFile, BiCheck, BiX, BiCheckCircle, BiErrorCircle } from 'react-icons/bi';
 import { toast } from 'react-toastify';
+import { AuthContext } from '../../context/AuthContext';
 import api from '../../services/api';
+import './UploadResume.css';
 
 const UploadResume = () => {
   const [file, setFile] = useState(null);
@@ -17,6 +19,31 @@ const UploadResume = () => {
   });
   const [result, setResult] = useState(null);
   const fileInputRef = useRef(null);
+  
+  const { user, isAuthenticated, logout } = useContext(AuthContext);
+  const navigate = useNavigate();
+
+  // Initialize theme state from localStorage
+  const [isDark, setIsDark] = useState(() => {
+    const stored = localStorage.getItem('theme');
+    if (stored) return stored === 'dark';
+    return document.documentElement.classList.contains('dark') || 
+           document.documentElement.getAttribute('data-theme') !== 'light';
+  });
+
+  useEffect(() => {
+    const root = document.documentElement;
+    if (isDark) {
+      root.classList.add('dark');
+      root.classList.remove('light');
+      root.setAttribute('data-theme', 'dark');
+    } else {
+      root.classList.remove('dark');
+      root.classList.add('light');
+      root.setAttribute('data-theme', 'light');
+    }
+    localStorage.setItem('theme', isDark ? 'dark' : 'light');
+  }, [isDark]);
 
   const steps = [
     "Uploading Resume...",
@@ -34,7 +61,7 @@ const UploadResume = () => {
       // Only allow digits and restrict to maximum of 10 digits
       const digitsOnly = value.replace(/\D/g, '');
       if (digitsOnly.length <= 10) {
-        setFormData({ ...formData, [name]: digitsOnly });
+        setFormData(prev => ({ ...prev, [name]: digitsOnly }));
       }
       return;
     }
@@ -42,11 +69,11 @@ const UploadResume = () => {
     if (name === 'fullName') {
       // Only allow letters and spaces
       const lettersOnly = value.replace(/[^a-zA-Z\s]/g, '');
-      setFormData({ ...formData, [name]: lettersOnly });
+      setFormData(prev => ({ ...prev, [name]: lettersOnly }));
       return;
     }
 
-    setFormData({ ...formData, [name]: value });
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
   const handleFileChange = (e) => {
@@ -128,7 +155,7 @@ const UploadResume = () => {
       if (formData.jobDescription) uploadData.append('jobDescription', formData.jobDescription);
 
       const uploadPromise = api.post('/candidate/upload-resume', uploadData, {
-        headers: { 'Content-Type': undefined }
+        headers: { 'Content-Type': 'multipart/form-data' }
       });
       
       const response = await Promise.all([simulateProgress(), uploadPromise]);
@@ -149,472 +176,450 @@ const UploadResume = () => {
     }
   };
 
-  return (
-    <div className="min-h-screen flex w-full bg-slate-950 overflow-hidden relative font-sans text-slate-100">
-      
-      {/* Background Animated Gradient Mesh */}
-      <div className="absolute inset-0 overflow-hidden">
-        <motion.div
-          animate={{
-            scale: [1, 1.15, 1],
-            x: [0, 60, 0],
-            y: [0, -40, 0],
-          }}
-          transition={{
-            duration: 20,
-            repeat: Infinity,
-            ease: "easeInOut",
-          }}
-          className="absolute -top-40 -left-40 w-[600px] h-[600px] bg-blue-600/10 rounded-full blur-[140px] pointer-events-none"
-        />
-        <motion.div
-          animate={{
-            scale: [1, 1.2, 1],
-            x: [0, -50, 0],
-            y: [0, 60, 0],
-          }}
-          transition={{
-            duration: 25,
-            repeat: Infinity,
-            ease: "easeInOut",
-          }}
-          className="absolute -bottom-40 -right-40 w-[600px] h-[600px] bg-indigo-600/10 rounded-full blur-[140px] pointer-events-none"
-        />
-        <div className="absolute top-1/3 right-1/4 w-[400px] h-[400px] bg-violet-600/5 rounded-full blur-[160px] pointer-events-none" />
-      </div>
-      
-      {/* Container */}
-      <div className="flex flex-col lg:flex-row w-full max-w-[1600px] mx-auto z-10 p-4 lg:p-8 relative">
-        
-        {/* Left Side (40%) */}
-        <div className="w-full lg:w-[40%] flex flex-col justify-center p-6 lg:p-12 mb-8 lg:mb-0">
-          <motion.div 
-            initial={{ opacity: 0, x: -30 }} 
-            animate={{ opacity: 1, x: 0 }} 
-            transition={{ duration: 0.6 }}
-          >
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 text-indigo-400 text-xs font-semibold mb-6 border border-indigo-500/20 shadow-inner">
-              <BiChip className="text-sm" /> AI Engine v2.0
-            </div>
-            
-            <h1 className="text-4xl lg:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white via-slate-100 to-slate-300 leading-tight mb-6">
-              AI-Powered <br className="hidden lg:block"/> Resume <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-500">Screening</span>
-            </h1>
-            
-            <p className="text-base text-slate-400 mb-10 leading-relaxed max-w-lg">
-              Upload your resume to extract key professional metrics, evaluate ATS compatibility scores, and route your profile dynamically based on eligibility.
-            </p>
+  const handleLogout = () => {
+    logout();
+    toast.success('Logged out successfully');
+    navigate('/login');
+  };
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-xl">
-              {[
-                { icon: <BiBrain className="text-xl text-blue-400 animate-pulse" />, title: "Instant Parsing", desc: "Automatic field extraction" },
-                { icon: <BiTargetLock className="text-xl text-indigo-400" />, title: "ATS Scoring", desc: "Weighted exact keyword match" },
-                { icon: <BiBarChartAlt2 className="text-xl text-emerald-400" />, title: "Smart Routing", desc: "Eligible matching algorithms" },
-                { icon: <BiTimeFive className="text-xl text-violet-400" />, title: "Real-time Status", desc: "Instant database screening" }
-              ].map((feature, idx) => (
-                <motion.div 
-                  key={idx}
-                  initial={{ opacity: 0, y: 15 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.2 + (idx * 0.08), duration: 0.4 }}
-                  className="flex items-start gap-3 p-4 rounded-xl bg-slate-900/30 border border-slate-800/40 backdrop-blur-sm hover:border-slate-800 transition-colors"
-                >
-                  <div className="p-2 bg-slate-950/60 shadow-inner rounded-lg flex-shrink-0 border border-slate-800">
-                    {feature.icon}
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-slate-200 text-sm">{feature.title}</h3>
-                    <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">{feature.desc}</p>
-                  </div>
-                </motion.div>
-              ))}
+  return (
+    <div className="upload-resume-page">
+      {/* ── NAVIGATION ── */}
+      <nav>
+        <div className="nav-logo">
+          <div className="logo-mark">⚡</div>
+          RecruitAI
+        </div>
+        <div className="nav-badge">AI Engine v3.0</div>
+        <div className="nav-right">
+          <button 
+            className="theme-toggle" 
+            onClick={() => setIsDark(!isDark)} 
+            aria-label="Toggle theme"
+          >
+            <span className="toggle-sun">☀️</span>
+            <span style={{ fontSize: '11px', fontWeight: 500 }}>
+              {isDark ? 'Light' : 'Dark'}
+            </span>
+            <span className="toggle-moon">🌙</span>
+          </button>
+          
+          {isAuthenticated ? (
+            <>
+              <button 
+                className="btn-ghost" 
+                onClick={() => {
+                  if (user?.role === 'ADMIN') navigate('/admin/dashboard');
+                  else if (user?.role === 'HR') navigate('/hr/dashboard');
+                  else navigate('/upload-resume');
+                }}
+              >
+                Dashboard
+              </button>
+              <button className="btn-primary-sm" onClick={handleLogout}>
+                Sign Out
+              </button>
+            </>
+          ) : (
+            <>
+              <button className="btn-ghost" onClick={() => navigate('/login')}>Sign In</button>
+              <button className="btn-primary-sm" onClick={() => navigate('/login')}>Get Started Free</button>
+            </>
+          )}
+        </div>
+      </nav>
+
+      <div className="wrapper">
+        {/* ── LEFT HERO ── */}
+        <div className="hero">
+          <div className="hero-eyebrow">
+            <span className="eyebrow-dot"></span>
+            Intelligent Screening Platform
+          </div>
+          <h1>AI-Powered<br />Resume<br /><span>Screening</span></h1>
+          <p className="hero-desc">
+            Extract key professional metrics, evaluate ATS compatibility scores, and dynamically route candidate profiles — all in seconds.
+          </p>
+          <div className="feature-grid">
+            <div className="feature-pill">
+              <div className="fp-icon purple">⚡</div>
+              <div>
+                <div className="fp-label">Instant Parsing</div>
+                <div className="fp-sub">Automatic text extraction</div>
+              </div>
             </div>
-          </motion.div>
+            <div className="feature-pill">
+              <div className="fp-icon gold">🎯</div>
+              <div>
+                <div className="fp-label">ATS Scoring</div>
+                <div className="fp-sub">Keyword match analysis</div>
+              </div>
+            </div>
+            <div className="feature-pill">
+              <div className="fp-icon green">🔀</div>
+              <div>
+                <div className="fp-label">Smart Routing</div>
+                <div className="fp-sub">Dynamic algorithms</div>
+              </div>
+            </div>
+            <div className="feature-pill">
+              <div className="fp-icon pink">📡</div>
+              <div>
+                <div className="fp-label">Real-time Status</div>
+                <div className="fp-sub">Live pipeline tracking</div>
+              </div>
+            </div>
+          </div>
+          
+          <div className="stats-row">
+            <div>
+              <div className="stat-num">98.4%</div>
+              <div className="stat-label">Parse Accuracy</div>
+            </div>
+            <div className="stat-div"></div>
+            <div>
+              <div className="stat-num">2.1s</div>
+              <div className="stat-label">Avg. Screen Time</div>
+            </div>
+            <div className="stat-div"></div>
+            <div>
+              <div className="stat-num">500K+</div>
+              <div className="stat-label">Profiles Processed</div>
+            </div>
+          </div>
         </div>
 
-        {/* Right Side (60%) */}
-        <div className="w-full lg:w-[60%] flex items-center justify-center p-4 lg:p-8">
-          <motion.div 
-            initial={{ opacity: 0, y: 30 }} 
-            animate={{ opacity: 1, y: 0 }} 
-            transition={{ duration: 0.6, delay: 0.2 }}
-            className="w-full max-w-[700px] relative"
-          >
-            {/* Ambient card background glow */}
-            <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-600 rounded-3xl blur-xl opacity-20 pointer-events-none"></div>
-
-            <div className="relative w-full bg-slate-900/60 backdrop-blur-2xl border border-slate-800/80 shadow-[0_0_50px_rgba(0,0,0,0.3)] rounded-3xl overflow-hidden p-8 lg:p-10">
-              
-              <AnimatePresence mode="wait">
-                {result ? (
-                  <motion.div
-                    key="result-pane"
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
-                    className="space-y-8"
-                  >
-                    {/* Result Header Badge */}
-                    <div className="text-center">
-                      <motion.div 
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-semibold mb-6 shadow-inner border border-slate-850"
-                        style={{
-                          backgroundColor: result.Status === 'Eligible' ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)',
-                          color: result.Status === 'Eligible' ? '#10b981' : '#ef4444',
-                          borderColor: result.Status === 'Eligible' ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)'
-                        }}
-                      >
-                        {result.Status === 'Eligible' ? (
-                          <>
-                            <BiCheckCircle className="text-lg animate-bounce" />
-                            <span>Candidate Match Verified</span>
-                          </>
-                        ) : (
-                          <>
-                            <BiErrorCircle className="text-lg" />
-                            <span>Below Evaluation Threshold</span>
-                          </>
-                        )}
-                      </motion.div>
-                      
-                      <h2 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white via-slate-100 to-slate-300 tracking-tight">
-                        Screening Report
-                      </h2>
-                    </div>
-
-                    {/* Dashboard Metrics Grid */}
-                    <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
-                      
-                      {/* ATS Radial Progress Gauge */}
-                      <div className="md:col-span-5 flex flex-col items-center justify-center p-6 bg-slate-950/40 rounded-2xl border border-slate-850/80 shadow-inner">
-                        <div className="relative w-36 h-36 flex items-center justify-center">
-                          {/* Radial Progress Circle SVG */}
-                          <svg className="w-full h-full transform -rotate-90">
-                            <circle
-                              cx="72"
-                              cy="72"
-                              r="60"
-                              stroke="rgba(30,41,59,0.5)"
-                              strokeWidth="8"
-                              fill="transparent"
-                            />
-                            <motion.circle
-                              cx="72"
-                              cy="72"
-                              r="60"
-                              stroke={result.Status === 'Eligible' ? '#10b981' : '#ef4444'}
-                              strokeWidth="8"
-                              fill="transparent"
-                              strokeDasharray={377}
-                              initial={{ strokeDashoffset: 377 }}
-                              animate={{ strokeDashoffset: 377 - (377 * result.ATSScore) / 100 }}
-                              transition={{ duration: 1.2, ease: "easeOut" }}
-                              strokeLinecap="round"
-                            />
-                          </svg>
-                          <div className="absolute flex flex-col items-center justify-center">
-                            <span className="text-4xl font-black text-white tracking-tight">{result.ATSScore}%</span>
-                            <span className="text-[10px] font-bold text-slate-500 tracking-widest uppercase mt-0.5">Score</span>
-                          </div>
-                        </div>
-                        <div className="mt-4 text-center">
-                          <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">ATS Score Compatibility</p>
-                        </div>
+        {/* ── RIGHT FORM CARD ── */}
+        <div className="card-panel">
+          <div className="upload-card">
+            
+            {result ? (
+              /* ── RESULT DASHBOARD PANEL ── */
+              <div className="card-body">
+                <div className="result-pane">
+                  <div className="result-badge-wrap">
+                    {result.Status === 'Eligible' ? (
+                      <div className="result-badge eligible">
+                        <BiCheckCircle size={14} style={{ marginRight: '4px' }} /> Candidate Match Verified
                       </div>
-
-                      {/* Detail Table Card */}
-                      <div className="md:col-span-7 bg-slate-950/40 border border-slate-850/80 rounded-2xl p-5 shadow-inner space-y-4">
-                        <div className="flex justify-between items-center border-b border-slate-900 pb-3">
-                          <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">FullName</span>
-                          <span className="text-sm font-bold text-white">{result.FullName}</span>
-                        </div>
-                        <div className="flex justify-between items-center border-b border-slate-900 pb-3">
-                          <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Email</span>
-                          <span className="text-sm font-semibold text-slate-200">{result.Email}</span>
-                        </div>
-                        {result.PhoneNumber && (
-                          <div className="flex justify-between items-center border-b border-slate-900 pb-3">
-                            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Phone</span>
-                            <span className="text-sm font-semibold text-slate-200">{result.PhoneNumber}</span>
-                          </div>
-                        )}
-                        {result.Location && (
-                          <div className="flex justify-between items-center border-b border-slate-900 pb-3">
-                            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Location</span>
-                            <span className="text-sm font-semibold text-slate-200">{result.Location}</span>
-                          </div>
-                        )}
-                        <div className="flex justify-between items-center border-b border-slate-900 pb-3">
-                          <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Status</span>
-                          <span className={`text-sm font-black ${result.Status === 'Eligible' ? 'text-emerald-400' : 'text-red-400'}`}>{result.Status}</span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Destination</span>
-                          <span className="text-xs font-bold font-mono px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">{result.StoredIn}</span>
-                        </div>
+                    ) : (
+                      <div className="result-badge ineligible">
+                        <BiErrorCircle size={14} style={{ marginRight: '4px' }} /> Below Evaluation Threshold
                       </div>
-                    </div>
-
-                    {/* Reset Button */}
-                    <button
-                      onClick={() => setResult(null)}
-                      className="w-full h-[54px] rounded-xl font-bold text-white bg-slate-950 border border-slate-850 hover:bg-slate-900 active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer shadow-inner"
-                    >
-                      Analyze Another Resume
-                    </button>
-                  </motion.div>
-                ) : (
-                  <motion.div
-                    key="form-pane"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="space-y-8"
-                  >
-                    {/* Header */}
-                    <div>
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/10 text-blue-400 text-xs font-semibold mb-4 border border-blue-500/20 shadow-inner">
-                        👋 Welcome Candidate
-                      </span>
-                      <h2 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white via-slate-100 to-slate-300 tracking-tight mb-2">Upload Profile</h2>
-                      <p className="text-slate-400 text-sm leading-relaxed">
-                        Verify your details and upload a standard PDF, DOC, or DOCX resume to start the parsing pipeline.
-                      </p>
-                    </div>
-
-                    {/* Form Fields */}
-                    <div className="space-y-6">
-                      
-                      {/* Full Name Input */}
-                      <div className="relative group space-y-2">
-                        <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400">Full Name</label>
-                        <div className="relative">
-                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-blue-400 transition-colors">
-                            <BiUser size={18} />
-                          </span>
-                          <input
-                            type="text"
-                            name="fullName"
-                            required
-                            value={formData.fullName}
-                            onChange={handleInputChange}
-                            className="w-full pl-10 pr-4 py-3 bg-slate-950/40 border border-slate-800 rounded-xl text-white placeholder-slate-600 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all text-sm shadow-inner"
-                            placeholder="e.g. John Doe"
+                    )}
+                  </div>
+                  
+                  <h2 className="result-title">Screening Report</h2>
+                  
+                  <div className="result-grid">
+                    {/* Radial ATS Gauge */}
+                    <div className="result-radial-container">
+                      <div className="radial-svg-wrap">
+                        <svg className="w-full h-full transform -rotate-90" viewBox="0 0 144 144">
+                          <circle
+                            cx="72"
+                            cy="72"
+                            r="60"
+                            stroke="rgba(255,255,255,0.03)"
+                            strokeWidth="8"
+                            fill="transparent"
                           />
+                          <circle
+                            cx="72"
+                            cy="72"
+                            r="60"
+                            stroke={result.Status === 'Eligible' ? 'var(--success)' : '#F05078'}
+                            strokeWidth="8"
+                            fill="transparent"
+                            strokeDasharray={377}
+                            strokeDashoffset={377 - (377 * (result.ATSScore || 0)) / 100}
+                            strokeLinecap="round"
+                            style={{ transition: 'stroke-dashoffset 1.2s ease-out' }}
+                          />
+                        </svg>
+                        <div className="radial-svg-text">
+                          <span className="radial-score">{result.ATSScore || 0}%</span>
+                          <span className="radial-label">Score</span>
                         </div>
                       </div>
-
-                      {/* Email & Phone */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                        {/* Email */}
-                        <div className="relative group space-y-2">
-                          <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400">Email Address</label>
-                          <div className="relative">
-                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-blue-400 transition-colors">
-                              <BiEnvelope size={18} />
-                            </span>
-                            <input
-                              type="email"
-                              name="email"
-                              required
-                              value={formData.email}
-                              onChange={handleInputChange}
-                              className="w-full pl-10 pr-4 py-3 bg-slate-950/40 border border-slate-800 rounded-xl text-white placeholder-slate-600 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all text-sm shadow-inner"
-                              placeholder="john.doe@example.com"
-                            />
-                          </div>
-                        </div>
-
-                        {/* Phone */}
-                        <div className="relative group space-y-2">
-                          <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400">Phone Number</label>
-                          <div className="relative">
-                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-blue-400 transition-colors">
-                              <BiPhone size={18} />
-                            </span>
-                            <input
-                              type="tel"
-                              name="phone"
-                              required
-                              value={formData.phone}
-                              onChange={handleInputChange}
-                              maxLength="10"
-                              className="w-full pl-10 pr-4 py-3 bg-slate-950/40 border border-slate-800 rounded-xl text-white placeholder-slate-600 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all text-sm shadow-inner"
-                              placeholder="10-digit number"
-                            />
-                          </div>
-                        </div>
+                      <div className="radial-title-desc">ATS Compatibility</div>
+                    </div>
+                    
+                    {/* Details Table */}
+                    <div className="result-details">
+                      <div className="detail-row">
+                        <span className="detail-row-label">Full Name</span>
+                        <span className="detail-row-value">{result.FullName || 'N/A'}</span>
                       </div>
-
-                      {/* Job Description Textarea */}
-                      <div className="relative group space-y-2">
-                        <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400">Job Description / Target Role (Optional)</label>
-                        <textarea
-                          name="jobDescription"
-                          value={formData.jobDescription}
+                      <div className="detail-row">
+                        <span className="detail-row-label">Email Address</span>
+                        <span className="detail-row-value">{result.Email || 'N/A'}</span>
+                      </div>
+                      {result.PhoneNumber && (
+                        <div className="detail-row">
+                          <span className="detail-row-label">Phone</span>
+                          <span className="detail-row-value">{result.PhoneNumber}</span>
+                        </div>
+                      )}
+                      {result.Location && (
+                        <div className="detail-row">
+                          <span className="detail-row-label">Location</span>
+                          <span className="detail-row-value">{result.Location}</span>
+                        </div>
+                      )}
+                      <div className="detail-row">
+                        <span className="detail-row-label">Status</span>
+                        <span 
+                          className="detail-row-value status-text" 
+                          style={{ color: result.Status === 'Eligible' ? 'var(--success)' : '#F05078' }}
+                        >
+                          {result.Status || 'N/A'}
+                        </span>
+                      </div>
+                      <div className="detail-row">
+                        <span className="detail-row-label">Destination</span>
+                        <span className="detail-row-value dest-badge">{result.StoredIn || 'N/A'}</span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <button
+                    onClick={() => setResult(null)}
+                    className="cta-btn"
+                    style={{ background: 'var(--bg-glass)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+                  >
+                    Analyze Another Resume
+                  </button>
+                </div>
+              </div>
+            ) : (
+              /* ── UPLOAD PROFILE FORM ── */
+              <>
+                <div className="card-header">
+                  <div>
+                    <h2>Upload Profile</h2>
+                    <p>Verify your details to start the parsing pipeline</p>
+                  </div>
+                  <div className="status-chip">
+                    <span className="status-dot"></span>
+                    Live
+                  </div>
+                </div>
+                <div className="card-body">
+                  <div className="form-row single">
+                    <div className="field">
+                      <label>Full Name</label>
+                      <div className="input-icon-wrap">
+                        <span className="icon">
+                          <BiUser size={16} />
+                        </span>
+                        <input 
+                          type="text" 
+                          name="fullName"
+                          value={formData.fullName}
                           onChange={handleInputChange}
-                          rows="3"
-                          className="w-full p-4 bg-slate-950/40 border border-slate-800 rounded-xl text-white placeholder-slate-600 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all text-sm shadow-inner resize-none leading-relaxed"
-                          placeholder="Paste a job description or keywords here to check compatibility score..."
+                          placeholder="e.g. Aisha Patel"
+                          disabled={isUploading}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="form-row">
+                    <div className="field">
+                      <label>Email Address</label>
+                      <div className="input-icon-wrap">
+                        <span className="icon">
+                          <BiEnvelope size={16} />
+                        </span>
+                        <input 
+                          type="email" 
+                          name="email"
+                          value={formData.email}
+                          onChange={handleInputChange}
+                          placeholder="you@company.com"
+                          disabled={isUploading}
+                        />
+                      </div>
+                    </div>
+                    <div className="field">
+                      <label>Phone Number</label>
+                      <div className="input-icon-wrap">
+                        <span className="icon">
+                          <BiPhone size={16} />
+                        </span>
+                        <input 
+                          type="tel" 
+                          name="phone"
+                          value={formData.phone}
+                          onChange={handleInputChange}
+                          placeholder="+91 98765 43210"
+                          disabled={isUploading}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="form-row single">
+                    <div className="field">
+                      <label>
+                        Job Description / Target Role{' '}
+                        <span style={{ fontSize: '10px', letterSpacing: 0, textTransform: 'none', color: 'var(--text-muted)' }}>
+                          (Optional)
+                        </span>
+                      </label>
+                      <textarea 
+                        name="jobDescription"
+                        value={formData.jobDescription}
+                        onChange={handleInputChange}
+                        placeholder="Paste a job description or keywords here to check compatibility score..."
+                        disabled={isUploading}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Drag and Drop Zone */}
+                  {!file ? (
+                    <div 
+                      className={`drop-zone ${isDragActive ? 'drag-active' : ''}`}
+                      onClick={() => !isUploading && fileInputRef.current?.click()}
+                      onDragEnter={handleDragEnter}
+                      onDragLeave={handleDragLeave}
+                      onDragOver={handleDragOver}
+                      onDrop={handleDrop}
+                      style={{ cursor: isUploading ? 'not-allowed' : 'pointer' }}
+                    >
+                      <input 
+                        type="file" 
+                        ref={fileInputRef} 
+                        accept=".pdf,.doc,.docx" 
+                        style={{ display: 'none' }} 
+                        onChange={handleFileChange}
+                        disabled={isUploading}
+                      />
+                      <div className="drop-icon">
+                        <BiCloudUpload size={24} />
+                      </div>
+                      <p className="drop-main">
+                        Drag & Drop Resume Here <span className="drop-browse">or Browse Files</span>
+                      </p>
+                      <p className="drop-sub">PDF, DOC, DOCX · Up to 5MB</p>
+                    </div>
+                  ) : (
+                    <div 
+                      className="drop-zone" 
+                      style={{ borderColor: 'var(--success)', background: 'var(--drop-hover-bg)', position: 'relative' }}
+                    >
+                      <div className="drop-icon" style={{ color: 'var(--success)', background: 'rgba(61,219,164,0.1)', borderColor: 'rgba(61,219,164,0.2)' }}>
+                        <BiFile size={22} />
+                      </div>
+                      <p className="drop-main">
+                        ✅ <strong>{file.name}</strong>
+                      </p>
+                      <p className="drop-sub">
+                        {(file.size / (1024 * 1024)).toFixed(2)} MB · File ready for screening
+                      </p>
+                      {!isUploading && (
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); setFile(null); }}
+                          style={{
+                            position: 'absolute', top: 12, right: 12,
+                            background: 'none', border: 'none', color: 'var(--text-muted)',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          <BiX size={20} />
+                        </button>
+                      )}
+                    </div>
+                  )}
+
+                  {/* AI Parsing Pipeline Progress Box */}
+                  {isUploading && (
+                    <div className="pipeline-box">
+                      <div className="pipeline-header">
+                        <span>AI Parsing Pipeline</span>
+                        <span className="pipeline-percentage">
+                          {Math.round((uploadProgress / steps.length) * 100)}%
+                        </span>
+                      </div>
+                      
+                      <div className="pipeline-progress-bar">
+                        <div 
+                          className="pipeline-progress-fill" 
+                          style={{ width: `${(uploadProgress / steps.length) * 100}%` }}
                         />
                       </div>
 
-                      {/* File Upload Zone */}
-                      {!file ? (
-                        <motion.div
-                          whileHover={{ scale: 1.005 }}
-                          whileTap={{ scale: 0.995 }}
-                          onDragEnter={handleDragEnter}
-                          onDragLeave={handleDragLeave}
-                          onDragOver={handleDragOver}
-                          onDrop={handleDrop}
-                          onClick={() => fileInputRef.current?.click()}
-                          className={`relative w-full h-44 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center cursor-pointer transition-all duration-300 ${
-                            isDragActive 
-                              ? 'border-indigo-500 bg-indigo-500/10' 
-                              : 'border-slate-800 bg-slate-950/40 hover:border-slate-700 hover:bg-slate-950/60 shadow-inner'
-                          }`}
-                        >
-                          <input
-                            type="file"
-                            ref={fileInputRef}
-                            className="hidden"
-                            accept=".pdf,.doc,.docx"
-                            onChange={handleFileChange}
-                          />
-                          <motion.div 
-                            animate={isDragActive ? { y: -5, scale: 1.1 } : { y: 0, scale: 1 }}
-                            className="w-14 h-14 mb-3 rounded-full bg-gradient-to-br from-indigo-500/10 to-blue-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 shadow-inner"
-                          >
-                            <BiCloudUpload size={28} />
-                          </motion.div>
-                          <p className="text-slate-200 font-semibold text-sm mb-1">
-                            Drag & Drop Resume Here
-                          </p>
-                          <p className="text-slate-500 text-xs">or <span className="text-indigo-400 font-medium hover:underline">Browse Files</span></p>
-                          <p className="text-[10px] text-slate-600 mt-3 font-semibold uppercase tracking-wider">PDF, DOC, DOCX up to 5MB</p>
-                        </motion.div>
-                      ) : (
-                        <motion.div 
-                          initial={{ opacity: 0, scale: 0.98 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          className="w-full p-4 border border-emerald-500/20 bg-emerald-500/5 rounded-xl flex items-center justify-between shadow-inner"
-                        >
-                          <div className="flex items-center gap-3 overflow-hidden">
-                            <div className="w-10 h-10 rounded-lg bg-emerald-500/10 border border-emerald-500/25 flex items-center justify-center text-emerald-400 flex-shrink-0">
-                              <BiFile size={20} />
-                            </div>
-                            <div className="truncate">
-                              <p className="font-semibold text-slate-200 text-sm truncate">{file.name}</p>
-                              <p className="text-xs text-slate-500 mt-0.5">{(file.size / (1024 * 1024)).toFixed(2)} MB</p>
-                            </div>
-                          </div>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); setFile(null); }}
-                            className="p-2 text-slate-500 hover:text-red-400 hover:bg-slate-900 rounded-lg transition-colors ml-2 flex-shrink-0"
-                            disabled={isUploading}
-                          >
-                            <BiX size={20} />
-                          </button>
-                        </motion.div>
-                      )}
+                      <div className="pipeline-steps">
+                        {steps.map((step, idx) => {
+                          const isActive = uploadProgress === idx;
+                          const isCompleted = uploadProgress > idx;
 
-                      {/* Progress Experience */}
-                      <AnimatePresence>
-                        {isUploading && (
-                          <motion.div 
-                            initial={{ opacity: 0, height: 0 }}
-                            animate={{ opacity: 1, height: 'auto' }}
-                            exit={{ opacity: 0, height: 0 }}
-                            className="bg-slate-950/80 rounded-xl p-5 border border-slate-850 shadow-inner overflow-hidden space-y-4"
-                          >
-                            <div className="flex justify-between items-center">
-                              <span className="text-xs font-bold uppercase tracking-wider text-slate-400">AI Parsing Pipeline</span>
-                              <span className="text-sm font-black text-indigo-400">{Math.round((uploadProgress / steps.length) * 100)}%</span>
+                          return (
+                            <div 
+                              key={idx} 
+                              className={`pipeline-step-item ${isCompleted ? 'completed' : isActive ? 'active' : ''}`}
+                            >
+                              <div className="pipeline-dot-indicator">
+                                {isCompleted ? <BiCheck size={8} /> : isActive ? '•' : ''}
+                              </div>
+                              <span>{step}</span>
                             </div>
-                            
-                            {/* Progress Bar */}
-                            <div className="w-full h-1.5 bg-slate-900 rounded-full overflow-hidden">
-                              <motion.div 
-                                className="h-full bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-600"
-                                initial={{ width: '0%' }}
-                                animate={{ width: `${(uploadProgress / steps.length) * 100}%` }}
-                                transition={{ duration: 0.3 }}
-                              />
-                            </div>
-
-                            {/* Steps List */}
-                            <div className="grid grid-cols-2 gap-2.5 pt-2">
-                              {steps.map((step, idx) => {
-                                const isActive = uploadProgress === idx;
-                                const isCompleted = uploadProgress > idx;
-
-                                return (
-                                  <div key={idx} className="flex items-center gap-2 text-xs">
-                                    <div className={`flex-shrink-0 w-4.5 h-4.5 rounded-full flex items-center justify-center 
-                                      ${isCompleted ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 
-                                        isActive ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20' : 'bg-slate-900 text-slate-600 border border-slate-850'}`
-                                    }>
-                                      {isCompleted ? <BiCheck size={12} /> : isActive ? <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-pulse" /> : <div className="w-1 h-1 bg-slate-600 rounded-full" />}
-                                    </div>
-                                    <span className={`${isCompleted ? 'text-slate-400 font-medium' : isActive ? 'text-indigo-400 font-semibold' : 'text-slate-600'}`}>
-                                      {step}
-                                    </span>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-
-                      {/* Upload Button */}
-                      <button
-                        onClick={handleUpload}
-                        disabled={!file || isUploading}
-                        className={`w-full h-[54px] rounded-xl font-bold text-white transition-all flex items-center justify-center gap-2 cursor-pointer
-                          ${(!file || isUploading) 
-                            ? 'bg-slate-900 border border-slate-850 text-slate-500 cursor-not-allowed shadow-none' 
-                            : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 shadow-[0_4px_20px_rgba(79,70,229,0.25)] hover:shadow-[0_4px_25px_rgba(79,70,229,0.4)] active:scale-[0.98]'
-                          }
-                        `}
-                      >
-                        {isUploading ? (
-                          <>
-                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                            <span>Processing Resume...</span>
-                          </>
-                        ) : (
-                          <>
-                            <BiChip size={18} />
-                            <span>Screen Resume Profile</span>
-                          </>
-                        )}
-                      </button>
+                          );
+                        })}
+                      </div>
                     </div>
+                  )}
 
-                    {/* Badges Footer */}
-                    <div className="pt-6 border-t border-slate-850/80 flex flex-wrap justify-center gap-6">
-                      {[
-                        { icon: <BiCheckShield size={16} />, text: "Secure Storage" },
-                        { icon: <BiLockAlt size={16} />, text: "Data Encryption" },
-                        { icon: <BiFile size={16} />, text: "ATS Match System" }
-                      ].map((badge, idx) => (
-                        <div key={idx} className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                          <span className="text-slate-500">{badge.icon}</span>
-                          {badge.text}
-                        </div>
-                      ))}
+                  <button 
+                    className="cta-btn" 
+                    onClick={handleUpload}
+                    disabled={!file || isUploading}
+                  >
+                    <div className="cta-shine"></div>
+                    {isUploading ? (
+                      <>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ animation: 'spin 1s linear infinite' }}>
+                          <path d="M12 2a10 10 0 0110 10" />
+                        </svg>
+                        Analysing Profile...
+                      </>
+                    ) : (
+                      <>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <circle cx="11" cy="11" r="7" />
+                          <path d="M21 21l-4.35-4.35" />
+                          <path d="M8 11h6M11 8v6" strokeWidth="2.5" />
+                        </svg>
+                        Screen Resume Profile
+                      </>
+                    )}
+                  </button>
+
+                  <div className="trust-row">
+                    <div className="trust-item">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+                      <span>Secure Storage</span>
                     </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          </motion.div>
+                    <span className="trust-dot">·</span>
+                    <div className="trust-item">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2L3 7v5c0 5.25 3.75 10.15 9 11.35C17.25 22.15 21 17.25 21 12V7l-9-5z"/></svg>
+                      <span>Data Encryption</span>
+                    </div>
+                    <span className="trust-dot">·</span>
+                    <div className="trust-item">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+                      <span>ATS Match System</span>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+
+          </div>
         </div>
-
       </div>
     </div>
   );
