@@ -26,6 +26,9 @@ public class CandidateController {
     @Autowired
     private ResumeParserService resumeParserService;
 
+    @Autowired
+    private com.fasterxml.jackson.databind.ObjectMapper objectMapper;
+
     @PostMapping("/upload-resume")
     public ResponseEntity<Map<String, Object>> uploadResume(
             @RequestParam("file") MultipartFile file,
@@ -51,6 +54,23 @@ public class CandidateController {
             
             String storedIn = candidate.getAtsScore() >= 80 ? "Eligible_Candidates" : "Not_Eligible_Candidates";
             response.put("StoredIn", storedIn);
+
+            try {
+                response.put("MatchingSkills", candidate.getMatchingSkills() != null && !candidate.getMatchingSkills().isEmpty() 
+                    ? objectMapper.readValue(candidate.getMatchingSkills(), java.util.List.class) : new java.util.ArrayList<>());
+                response.put("MissingSkills", candidate.getMissingSkills() != null && !candidate.getMissingSkills().isEmpty() 
+                    ? objectMapper.readValue(candidate.getMissingSkills(), java.util.List.class) : new java.util.ArrayList<>());
+                response.put("Strengths", candidate.getStrengths() != null && !candidate.getStrengths().isEmpty() 
+                    ? objectMapper.readValue(candidate.getStrengths(), java.util.List.class) : new java.util.ArrayList<>());
+                response.put("Improvements", candidate.getImprovements() != null && !candidate.getImprovements().isEmpty() 
+                    ? objectMapper.readValue(candidate.getImprovements(), java.util.List.class) : new java.util.ArrayList<>());
+            } catch (Exception e) {
+                response.put("MatchingSkills", new java.util.ArrayList<>());
+                response.put("MissingSkills", new java.util.ArrayList<>());
+                response.put("Strengths", new java.util.ArrayList<>());
+                response.put("Improvements", new java.util.ArrayList<>());
+            }
+            response.put("FeedbackReason", candidate.getFeedbackReason());
 
             log.info("Resume uploaded and parsed successfully for candidate: {}", candidate.getEmail());
             return new ResponseEntity<>(response, HttpStatus.OK);

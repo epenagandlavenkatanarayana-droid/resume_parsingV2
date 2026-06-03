@@ -28,7 +28,7 @@ const AdminLayout = () => {
   ];
 
   const SidebarContent = () => (
-    <>
+    <div className="flex-1 flex flex-col">
       {/* Logo */}
       <div className="p-5 border-b border-slate-100">
         <div className="flex items-center gap-3">
@@ -72,13 +72,13 @@ const AdminLayout = () => {
           Logout
         </button>
       </div>
-    </>
+    </div>
   );
 
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden">
       {/* Desktop Sidebar */}
-      <aside className="hidden md:flex flex-col w-64 bg-white border-r border-slate-200 shadow-sm flex-shrink-0">
+      <aside className="hidden md:flex flex-col h-screen w-64 bg-white border-r border-slate-200 shadow-sm flex-shrink-0">
         <SidebarContent />
       </aside>
 

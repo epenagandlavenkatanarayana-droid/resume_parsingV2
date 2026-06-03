@@ -6,7 +6,7 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Candidate {
+public class ShortlistedCandidate {
 
     private String id;
     private String fullName;

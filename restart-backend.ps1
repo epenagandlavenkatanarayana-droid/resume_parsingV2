@@ -19,5 +19,5 @@ if ($portInfo) {
 
 Write-Host ""
 Write-Host "Starting Spring Boot backend..." -ForegroundColor Cyan
-Set-Location "d:\Narayana\resume_Parsing\resume-parser-backend"
+Set-Location "$PSScriptRoot\resume-parser-backend"
 mvn spring-boot:run

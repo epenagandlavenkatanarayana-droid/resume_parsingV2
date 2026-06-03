@@ -23,4 +23,11 @@ public class CandidateResponse {
     private Integer atsScore;
     private String candidateStatus;
     private boolean shortlisted;
+
+    // ATS feedback details
+    private List<String> matchingSkills;
+    private List<String> missingSkills;
+    private List<String> strengths;
+    private List<String> improvements;
+    private String feedbackReason;
 }

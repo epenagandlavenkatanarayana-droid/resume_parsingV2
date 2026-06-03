@@ -4,6 +4,15 @@ import com.examportal.entity.Candidate;
 import com.examportal.dto.CandidateResponse;
 import com.examportal.payload.ApiResponse;
 import com.examportal.repository.CandidateRepository;
+import com.examportal.entity.User;
+import com.examportal.repository.UserRepository;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import com.examportal.entity.EligibleCandidate;
+import com.examportal.entity.NotEligibleCandidate;
+import com.examportal.entity.ShortlistedCandidate;
+import com.examportal.repository.EligibleCandidateRepository;
+import com.examportal.repository.NotEligibleCandidateRepository;
+import com.examportal.repository.ShortlistedCandidateRepository;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,6 +31,21 @@ public class HrController {
 
     @Autowired
     private CandidateRepository candidateRepository;
+
+    @Autowired
+    private EligibleCandidateRepository eligibleCandidateRepository;
+
+    @Autowired
+    private NotEligibleCandidateRepository notEligibleCandidateRepository;
+
+    @Autowired
+    private ShortlistedCandidateRepository shortlistedCandidateRepository;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
 
     @Autowired
     private ObjectMapper objectMapper;
@@ -44,6 +68,52 @@ public class HrController {
             res.setAtsScore(c.getAtsScore());
             res.setCandidateStatus(c.getCandidateStatus());
             res.setShortlisted(c.isShortlisted());
+            
+            // Map Matching Skills
+            try {
+                if (c.getMatchingSkills() != null && !c.getMatchingSkills().isEmpty()) {
+                    res.setMatchingSkills(objectMapper.readValue(c.getMatchingSkills(), new TypeReference<List<String>>() {}));
+                } else {
+                    res.setMatchingSkills(new ArrayList<>());
+                }
+            } catch (Exception ex) {
+                res.setMatchingSkills(new ArrayList<>());
+            }
+
+            // Map Missing Skills
+            try {
+                if (c.getMissingSkills() != null && !c.getMissingSkills().isEmpty()) {
+                    res.setMissingSkills(objectMapper.readValue(c.getMissingSkills(), new TypeReference<List<String>>() {}));
+                } else {
+                    res.setMissingSkills(new ArrayList<>());
+                }
+            } catch (Exception ex) {
+                res.setMissingSkills(new ArrayList<>());
+            }
+
+            // Map Strengths
+            try {
+                if (c.getStrengths() != null && !c.getStrengths().isEmpty()) {
+                    res.setStrengths(objectMapper.readValue(c.getStrengths(), new TypeReference<List<String>>() {}));
+                } else {
+                    res.setStrengths(new ArrayList<>());
+                }
+            } catch (Exception ex) {
+                res.setStrengths(new ArrayList<>());
+            }
+
+            // Map Improvements
+            try {
+                if (c.getImprovements() != null && !c.getImprovements().isEmpty()) {
+                    res.setImprovements(objectMapper.readValue(c.getImprovements(), new TypeReference<List<String>>() {}));
+                } else {
+                    res.setImprovements(new ArrayList<>());
+                }
+            } catch (Exception ex) {
+                res.setImprovements(new ArrayList<>());
+            }
+
+            res.setFeedbackReason(c.getFeedbackReason());
             
             // 1. Map Education Details (remap graduation_year to graduationYear)
             try {
@@ -177,10 +247,333 @@ public class HrController {
             return new ResponseEntity<>(new ApiResponse("Candidate not found", false), HttpStatus.NOT_FOUND);
         }
         
-        candidate.setShortlisted(!candidate.isShortlisted());
-        candidateRepository.save(candidate);
+        boolean newShortlistState = !candidate.isShortlisted();
+        candidate.setShortlisted(newShortlistState);
+        
+        if (newShortlistState) {
+            // Toggling Shortlisted = True
+            // If they are not eligible, update status to "Eligible"
+            if (!"Eligible".equals(candidate.getCandidateStatus())) {
+                candidate.setCandidateStatus("Eligible");
+            }
+            
+            // Save updated main candidate details
+            candidateRepository.save(candidate);
+            
+            // Save to eligible collection
+            EligibleCandidate eligible = EligibleCandidate.builder()
+                    .id(candidate.getId())
+                    .fullName(candidate.getFullName())
+                    .email(candidate.getEmail())
+                    .phoneNumber(candidate.getPhoneNumber())
+                    .location(candidate.getLocation())
+                    .linkedinProfile(candidate.getLinkedinProfile())
+                    .professionalSummary(candidate.getProfessionalSummary())
+                    .educationDetails(candidate.getEducationDetails())
+                    .experienceDetails(candidate.getExperienceDetails())
+                    .skills(candidate.getSkills())
+                    .certifications(candidate.getCertifications())
+                    .projects(candidate.getProjects())
+                    .languages(candidate.getLanguages())
+                    .totalYearsExperience(candidate.getTotalYearsExperience())
+                    .atsScore(candidate.getAtsScore())
+                    .candidateStatus(candidate.getCandidateStatus())
+                    .shortlisted(candidate.isShortlisted())
+                    .resumeHash(candidate.getResumeHash())
+                    .jobDescription(candidate.getJobDescription())
+                    .resumeUploadDate(candidate.getResumeUploadDate())
+                    .matchingSkills(candidate.getMatchingSkills())
+                    .missingSkills(candidate.getMissingSkills())
+                    .strengths(candidate.getStrengths())
+                    .improvements(candidate.getImprovements())
+                    .feedbackReason(candidate.getFeedbackReason())
+                    .build();
+            eligibleCandidateRepository.save(eligible);
+            
+            // Delete from not eligible collection
+            try {
+                notEligibleCandidateRepository.deleteById(id);
+            } catch (Exception e) {
+                // Ignore if not present
+            }
+            
+            // Save to shortlisted candidates collection
+            ShortlistedCandidate shortlisted = ShortlistedCandidate.builder()
+                    .id(candidate.getId())
+                    .fullName(candidate.getFullName())
+                    .email(candidate.getEmail())
+                    .phoneNumber(candidate.getPhoneNumber())
+                    .location(candidate.getLocation())
+                    .linkedinProfile(candidate.getLinkedinProfile())
+                    .professionalSummary(candidate.getProfessionalSummary())
+                    .educationDetails(candidate.getEducationDetails())
+                    .experienceDetails(candidate.getExperienceDetails())
+                    .skills(candidate.getSkills())
+                    .certifications(candidate.getCertifications())
+                    .projects(candidate.getProjects())
+                    .languages(candidate.getLanguages())
+                    .totalYearsExperience(candidate.getTotalYearsExperience())
+                    .atsScore(candidate.getAtsScore())
+                    .candidateStatus(candidate.getCandidateStatus())
+                    .shortlisted(candidate.isShortlisted())
+                    .resumeHash(candidate.getResumeHash())
+                    .jobDescription(candidate.getJobDescription())
+                    .resumeUploadDate(candidate.getResumeUploadDate())
+                    .matchingSkills(candidate.getMatchingSkills())
+                    .missingSkills(candidate.getMissingSkills())
+                    .strengths(candidate.getStrengths())
+                    .improvements(candidate.getImprovements())
+                    .feedbackReason(candidate.getFeedbackReason())
+                    .build();
+            shortlistedCandidateRepository.save(shortlisted);
+            
+        } else {
+            // Toggling Shortlisted = False
+            // Delete from shortlisted candidates collection
+            try {
+                shortlistedCandidateRepository.deleteById(id);
+            } catch (Exception e) {
+                // Ignore if not present
+            }
+            
+            // Revert candidate status based on original ATS score
+            if (candidate.getAtsScore() != null && candidate.getAtsScore() >= 80) {
+                candidate.setCandidateStatus("Eligible");
+                candidateRepository.save(candidate);
+                
+                // Add back to eligible candidates collection
+                EligibleCandidate eligible = EligibleCandidate.builder()
+                        .id(candidate.getId())
+                        .fullName(candidate.getFullName())
+                        .email(candidate.getEmail())
+                        .phoneNumber(candidate.getPhoneNumber())
+                        .location(candidate.getLocation())
+                        .linkedinProfile(candidate.getLinkedinProfile())
+                        .professionalSummary(candidate.getProfessionalSummary())
+                        .educationDetails(candidate.getEducationDetails())
+                        .experienceDetails(candidate.getExperienceDetails())
+                        .skills(candidate.getSkills())
+                        .certifications(candidate.getCertifications())
+                        .projects(candidate.getProjects())
+                        .languages(candidate.getLanguages())
+                        .totalYearsExperience(candidate.getTotalYearsExperience())
+                        .atsScore(candidate.getAtsScore())
+                        .candidateStatus(candidate.getCandidateStatus())
+                        .shortlisted(candidate.isShortlisted())
+                        .resumeHash(candidate.getResumeHash())
+                        .jobDescription(candidate.getJobDescription())
+                        .resumeUploadDate(candidate.getResumeUploadDate())
+                        .matchingSkills(candidate.getMatchingSkills())
+                        .missingSkills(candidate.getMissingSkills())
+                        .strengths(candidate.getStrengths())
+                        .improvements(candidate.getImprovements())
+                        .feedbackReason(candidate.getFeedbackReason())
+                        .build();
+                eligibleCandidateRepository.save(eligible);
+            } else {
+                candidate.setCandidateStatus("Not Eligible");
+                candidateRepository.save(candidate);
+                
+                // Remove from eligible candidates collection if they exist there
+                try {
+                    eligibleCandidateRepository.deleteById(id);
+                } catch (Exception e) {}
+                
+                // Add back to not eligible candidates collection
+                NotEligibleCandidate notEligible = NotEligibleCandidate.builder()
+                        .id(candidate.getId())
+                        .fullName(candidate.getFullName())
+                        .email(candidate.getEmail())
+                        .phoneNumber(candidate.getPhoneNumber())
+                        .location(candidate.getLocation())
+                        .linkedinProfile(candidate.getLinkedinProfile())
+                        .professionalSummary(candidate.getProfessionalSummary())
+                        .educationDetails(candidate.getEducationDetails())
+                        .experienceDetails(candidate.getExperienceDetails())
+                        .skills(candidate.getSkills())
+                        .certifications(candidate.getCertifications())
+                        .projects(candidate.getProjects())
+                        .languages(candidate.getLanguages())
+                        .totalYearsExperience(candidate.getTotalYearsExperience())
+                        .atsScore(candidate.getAtsScore())
+                        .candidateStatus(candidate.getCandidateStatus())
+                        .shortlisted(candidate.isShortlisted())
+                        .resumeHash(candidate.getResumeHash())
+                        .jobDescription(candidate.getJobDescription())
+                        .resumeUploadDate(candidate.getResumeUploadDate())
+                        .matchingSkills(candidate.getMatchingSkills())
+                        .missingSkills(candidate.getMissingSkills())
+                        .strengths(candidate.getStrengths())
+                        .improvements(candidate.getImprovements())
+                        .feedbackReason(candidate.getFeedbackReason())
+                        .build();
+                notEligibleCandidateRepository.save(notEligible);
+            }
+        }
         
         String status = candidate.isShortlisted() ? "shortlisted" : "removed from shortlist";
         return new ResponseEntity<>(new ApiResponse("Candidate " + status, true), HttpStatus.OK);
+    }
+
+    @PutMapping("/profiles/{id}/eligible")
+    public ResponseEntity<ApiResponse> toggleEligibility(@PathVariable String id) {
+        Candidate candidate = candidateRepository.findById(id).orElse(null);
+        if (candidate == null) {
+            return new ResponseEntity<>(new ApiResponse("Candidate not found", false), HttpStatus.NOT_FOUND);
+        }
+        
+        boolean newEligibility = !"Eligible".equals(candidate.getCandidateStatus());
+        
+        if (newEligibility) {
+            candidate.setCandidateStatus("Eligible");
+            candidateRepository.save(candidate);
+            
+            // Delete from not eligible collection
+            try {
+                notEligibleCandidateRepository.deleteById(id);
+            } catch (Exception e) {}
+            
+            // Save to eligible collection
+            EligibleCandidate eligible = EligibleCandidate.builder()
+                    .id(candidate.getId())
+                    .fullName(candidate.getFullName())
+                    .email(candidate.getEmail())
+                    .phoneNumber(candidate.getPhoneNumber())
+                    .location(candidate.getLocation())
+                    .linkedinProfile(candidate.getLinkedinProfile())
+                    .professionalSummary(candidate.getProfessionalSummary())
+                    .educationDetails(candidate.getEducationDetails())
+                    .experienceDetails(candidate.getExperienceDetails())
+                    .skills(candidate.getSkills())
+                    .certifications(candidate.getCertifications())
+                    .projects(candidate.getProjects())
+                    .languages(candidate.getLanguages())
+                    .totalYearsExperience(candidate.getTotalYearsExperience())
+                    .atsScore(candidate.getAtsScore())
+                    .candidateStatus(candidate.getCandidateStatus())
+                    .shortlisted(candidate.isShortlisted())
+                    .resumeHash(candidate.getResumeHash())
+                    .jobDescription(candidate.getJobDescription())
+                    .resumeUploadDate(candidate.getResumeUploadDate())
+                    .matchingSkills(candidate.getMatchingSkills())
+                    .missingSkills(candidate.getMissingSkills())
+                    .strengths(candidate.getStrengths())
+                    .improvements(candidate.getImprovements())
+                    .feedbackReason(candidate.getFeedbackReason())
+                    .build();
+            eligibleCandidateRepository.save(eligible);
+            
+            // If they are shortlisted, also make sure they are saved to shortlisted collection
+            if (candidate.isShortlisted()) {
+                ShortlistedCandidate shortlisted = ShortlistedCandidate.builder()
+                        .id(candidate.getId())
+                        .fullName(candidate.getFullName())
+                        .email(candidate.getEmail())
+                        .phoneNumber(candidate.getPhoneNumber())
+                        .location(candidate.getLocation())
+                        .linkedinProfile(candidate.getLinkedinProfile())
+                        .professionalSummary(candidate.getProfessionalSummary())
+                        .educationDetails(candidate.getEducationDetails())
+                        .experienceDetails(candidate.getExperienceDetails())
+                        .skills(candidate.getSkills())
+                        .certifications(candidate.getCertifications())
+                        .projects(candidate.getProjects())
+                        .languages(candidate.getLanguages())
+                        .totalYearsExperience(candidate.getTotalYearsExperience())
+                        .atsScore(candidate.getAtsScore())
+                        .candidateStatus(candidate.getCandidateStatus())
+                        .shortlisted(candidate.isShortlisted())
+                        .resumeHash(candidate.getResumeHash())
+                        .jobDescription(candidate.getJobDescription())
+                        .resumeUploadDate(candidate.getResumeUploadDate())
+                        .matchingSkills(candidate.getMatchingSkills())
+                        .missingSkills(candidate.getMissingSkills())
+                        .strengths(candidate.getStrengths())
+                        .improvements(candidate.getImprovements())
+                        .feedbackReason(candidate.getFeedbackReason())
+                        .build();
+                shortlistedCandidateRepository.save(shortlisted);
+            }
+        } else {
+            candidate.setCandidateStatus("Not Eligible");
+            // If they were shortlisted, we should remove them from shortlist since they are now Not Eligible manually
+            candidate.setShortlisted(false);
+            candidateRepository.save(candidate);
+            
+            // Delete from eligible and shortlisted collections
+            try {
+                eligibleCandidateRepository.deleteById(id);
+            } catch (Exception e) {}
+            try {
+                shortlistedCandidateRepository.deleteById(id);
+            } catch (Exception e) {}
+            
+            // Save to not eligible collection
+            NotEligibleCandidate notEligible = NotEligibleCandidate.builder()
+                    .id(candidate.getId())
+                    .fullName(candidate.getFullName())
+                    .email(candidate.getEmail())
+                    .phoneNumber(candidate.getPhoneNumber())
+                    .location(candidate.getLocation())
+                    .linkedinProfile(candidate.getLinkedinProfile())
+                    .professionalSummary(candidate.getProfessionalSummary())
+                    .educationDetails(candidate.getEducationDetails())
+                    .experienceDetails(candidate.getExperienceDetails())
+                    .skills(candidate.getSkills())
+                    .certifications(candidate.getCertifications())
+                    .projects(candidate.getProjects())
+                    .languages(candidate.getLanguages())
+                    .totalYearsExperience(candidate.getTotalYearsExperience())
+                    .atsScore(candidate.getAtsScore())
+                    .candidateStatus(candidate.getCandidateStatus())
+                    .shortlisted(candidate.isShortlisted())
+                    .resumeHash(candidate.getResumeHash())
+                    .jobDescription(candidate.getJobDescription())
+                    .resumeUploadDate(candidate.getResumeUploadDate())
+                    .matchingSkills(candidate.getMatchingSkills())
+                    .missingSkills(candidate.getMissingSkills())
+                    .strengths(candidate.getStrengths())
+                    .improvements(candidate.getImprovements())
+                    .feedbackReason(candidate.getFeedbackReason())
+                    .build();
+            notEligibleCandidateRepository.save(notEligible);
+        }
+        
+        String status = "Eligible".equals(candidate.getCandidateStatus()) ? "marked as eligible" : "marked as not eligible";
+        return new ResponseEntity<>(new ApiResponse("Candidate " + status, true), HttpStatus.OK);
+    }
+
+    @PutMapping("/profile")
+    public ResponseEntity<ApiResponse> updateProfile(
+            java.security.Principal principal,
+            @RequestBody Map<String, String> request) {
+        
+        if (principal == null) {
+            return new ResponseEntity<>(new ApiResponse("Unauthorized", false), HttpStatus.UNAUTHORIZED);
+        }
+        
+        String email = principal.getName();
+        User user = userRepository.findByEmail(email).orElse(null);
+        if (user == null) {
+            return new ResponseEntity<>(new ApiResponse("User not found", false), HttpStatus.NOT_FOUND);
+        }
+        
+        String fullName = request.get("fullName");
+        String phoneNumber = request.get("phoneNumber");
+        String password = request.get("password");
+        
+        if (fullName != null && !fullName.trim().isEmpty()) {
+            user.setFullName(fullName.trim());
+        }
+        if (phoneNumber != null) {
+            user.setPhoneNumber(phoneNumber.trim());
+        }
+        if (password != null && !password.trim().isEmpty()) {
+            user.setPassword(passwordEncoder.encode(password.trim()));
+        }
+        
+        userRepository.save(user);
+        
+        return new ResponseEntity<>(new ApiResponse("Profile updated successfully", true), HttpStatus.OK);
     }
 }

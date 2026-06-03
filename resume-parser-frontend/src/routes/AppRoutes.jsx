@@ -8,6 +8,7 @@ import Login from '../pages/auth/Login';
 
 // HR Pages
 import HrDashboard from '../pages/hr/HrDashboard';
+import Profile from '../pages/hr/Profile';
 
 // Candidate Pages
 import UploadResume from '../pages/candidate/UploadResume';
@@ -31,6 +32,7 @@ const AppRoutes = () => {
       >
         <Route index element={<Navigate to="/hr/dashboard" replace />} />
         <Route path="dashboard" element={<HrDashboard />} />
+        <Route path="profile" element={<Profile />} />
       </Route>
 
       {/* Admin Routes */}

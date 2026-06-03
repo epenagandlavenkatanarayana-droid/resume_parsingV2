@@ -30,4 +30,11 @@ public class EligibleCandidate {
     private String jobDescription;
     @Builder.Default
     private String resumeUploadDate = java.time.LocalDateTime.now().toString();
+
+    // ATS feedback details
+    private String matchingSkills;
+    private String missingSkills;
+    private String strengths;
+    private String improvements;
+    private String feedbackReason;
 }

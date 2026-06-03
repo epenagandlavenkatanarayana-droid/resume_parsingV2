@@ -26,10 +26,11 @@ const HrLayout = () => {
 
   const menuItems = [
     { path: '/hr/dashboard', name: 'Resumes Dashboard', icon: <BiBriefcase className="text-xl" /> },
+    { path: '/hr/profile', name: 'Profile Settings', icon: <BiUser className="text-xl" /> },
   ];
 
   const SidebarContent = () => (
-    <>
+    <div className="flex flex-col h-full">
       {/* Logo */}
       <div className="p-5 border-b border-slate-100">
         <div className="flex items-center gap-3">
@@ -48,10 +49,9 @@ const HrLayout = () => {
             to={item.path}
             onClick={() => setSidebarOpen(false)}
             className={({ isActive }) =>
-              `flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all duration-200 text-sm ${
-                isActive
-                  ? 'bg-blue-50 text-blue-600 shadow-sm'
-                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+              `flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all duration-200 text-sm ${isActive
+                ? 'bg-blue-50 text-blue-600 shadow-sm'
+                : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
               }`
             }
           >
@@ -71,14 +71,14 @@ const HrLayout = () => {
           Logout
         </button>
       </div>
-    </>
+    </div>
   );
 
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden">
 
       {/* ── Desktop Sidebar (hidden on mobile) ── */}
-      <aside className="hidden md:flex flex-col w-64 bg-white border-r border-slate-200 shadow-sm flex-shrink-0">
+      <aside className="hidden md:flex flex-col h-screen w-64 bg-white border-r border-slate-200 shadow-sm flex-shrink-0">
         <SidebarContent />
       </aside>
 
@@ -133,15 +133,6 @@ const HrLayout = () => {
               <BiMenu className="text-2xl" />
             </button>
             <h2 className="text-base md:text-xl font-bold text-slate-900">HR Panel</h2>
-          </div>
-
-          <div className="flex items-center gap-2 md:gap-3">
-            <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-sm flex-shrink-0">
-              {user?.name?.charAt(0)?.toUpperCase() || 'H'}
-            </div>
-            <span className="hidden sm:block font-medium text-slate-700 text-sm truncate max-w-[140px]">
-              {user?.name || 'HR User'}
-            </span>
           </div>
         </header>
 

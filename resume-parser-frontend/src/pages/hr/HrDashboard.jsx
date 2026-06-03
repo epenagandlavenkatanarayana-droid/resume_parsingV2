@@ -43,6 +43,17 @@ const HrDashboard = () => {
     }
   };
 
+  const toggleEligible = async (id) => {
+    try {
+      const response = await api.put(`/hr/profiles/${id}/eligible`);
+      toast.success(response.data.message);
+      fetchProfiles();
+    } catch (error) {
+      console.error(error);
+      toast.error('Failed to update eligibility status');
+    }
+  };
+
   const filteredProfiles = profiles.filter((profile) => {
     const matchesSearch =
       profile.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -58,6 +69,7 @@ const HrDashboard = () => {
     total: profiles.length,
     eligible: profiles.filter(p => p.candidateStatus === 'Eligible').length,
     shortlisted: profiles.filter(p => p.shortlisted).length,
+    notEligible: profiles.filter(p => p.candidateStatus !== 'Eligible').length,
   };
 
   if (loading) {
@@ -79,13 +91,22 @@ const HrDashboard = () => {
       </div>
 
       {/* ── Stats Cards ── */}
-      <div className="grid grid-cols-3 gap-3 md:gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
         {[
-          { label: 'Total', value: stats.total, color: 'bg-blue-50 text-blue-700 border-blue-100' },
-          { label: 'Eligible', value: stats.eligible, color: 'bg-emerald-50 text-emerald-700 border-emerald-100' },
-          { label: 'Shortlisted', value: stats.shortlisted, color: 'bg-amber-50 text-amber-700 border-amber-100' },
+          { label: 'Total', value: stats.total, color: 'bg-blue-50 text-blue-700 border-blue-100 hover:bg-blue-100/50 cursor-pointer', filter: 'all' },
+          { label: 'Eligible', value: stats.eligible, color: 'bg-emerald-50 text-emerald-700 border-emerald-100 hover:bg-emerald-100/50 cursor-pointer', filter: 'eligible' },
+          { label: 'Shortlisted', value: stats.shortlisted, color: 'bg-amber-50 text-amber-700 border-amber-100 hover:bg-amber-100/50 cursor-pointer', filter: 'shortlisted' },
+          { label: 'Not Eligible', value: stats.notEligible, color: 'bg-rose-50 text-rose-700 border-rose-100 hover:bg-rose-100/50 cursor-pointer', filter: 'not_eligible' },
         ].map((stat) => (
-          <div key={stat.label} className={`rounded-xl border p-3 md:p-4 ${stat.color}`}>
+          <div
+            key={stat.label}
+            onClick={() => setActiveFilter(stat.filter)}
+            className={`rounded-xl border p-3 md:p-4 transition-all duration-200 ${stat.color} ${
+              activeFilter === stat.filter
+                ? 'ring-2 ring-blue-550 ring-offset-2 scale-[1.02] shadow-sm'
+                : 'hover:scale-[1.01]'
+            }`}
+          >
             <p className="text-xs font-semibold uppercase tracking-wider opacity-70">{stat.label}</p>
             <p className="text-2xl md:text-3xl font-black mt-1">{stat.value}</p>
           </div>
@@ -206,6 +227,20 @@ const HrDashboard = () => {
                         ) : (
                           <><BiChevronDown className="text-base" /> View Details</>
                         )}
+                      </button>
+
+                      <button
+                        onClick={() => toggleEligible(profile.id)}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                          profile.candidateStatus === 'Eligible'
+                            ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
+                            : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                        }`}
+                      >
+                        {profile.candidateStatus === 'Eligible'
+                          ? <><BiCheck className="text-base" /> Eligible</>
+                          : <><BiStar className="text-base" /> Make Eligible</>
+                        }
                       </button>
 
                       <button

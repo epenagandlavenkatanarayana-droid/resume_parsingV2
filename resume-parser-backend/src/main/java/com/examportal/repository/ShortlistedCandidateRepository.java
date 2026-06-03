@@ -1,18 +1,18 @@
 package com.examportal.repository;
 
-import com.examportal.entity.NotEligibleCandidate;
+import com.examportal.entity.ShortlistedCandidate;
 import com.google.cloud.firestore.CollectionReference;
 import com.google.firebase.cloud.FirestoreClient;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public class NotEligibleCandidateRepository {
+public class ShortlistedCandidateRepository {
 
     private CollectionReference getCollection() {
-        return FirestoreClient.getFirestore().collection("not_eligible_candidates");
+        return FirestoreClient.getFirestore().collection("shortlisted_candidates");
     }
 
-    public NotEligibleCandidate save(NotEligibleCandidate candidate) {
+    public ShortlistedCandidate save(ShortlistedCandidate candidate) {
         if (candidate == null) return null;
         try {
             String docId = candidate.getId();
@@ -26,7 +26,7 @@ public class NotEligibleCandidateRepository {
             getCollection().document(docId).set(candidate).get();
             return candidate;
         } catch (Exception e) {
-            throw new RuntimeException("Error saving not eligible candidate to Firestore: " + e.getMessage(), e);
+            throw new RuntimeException("Error saving shortlisted candidate to Firestore: " + e.getMessage(), e);
         }
     }
 
@@ -35,7 +35,7 @@ public class NotEligibleCandidateRepository {
         try {
             getCollection().document(id).delete().get();
         } catch (Exception e) {
-            throw new RuntimeException("Error deleting not eligible candidate from Firestore: " + e.getMessage(), e);
+            throw new RuntimeException("Error deleting shortlisted candidate from Firestore: " + e.getMessage(), e);
         }
     }
 }

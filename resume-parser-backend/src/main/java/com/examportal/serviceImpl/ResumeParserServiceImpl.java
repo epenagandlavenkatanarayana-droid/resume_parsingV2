@@ -164,6 +164,9 @@ public class ResumeParserServiceImpl implements ResumeParserService {
             String status = atsScore >= 80 ? "Eligible" : "Not Eligible";
             candidate.setCandidateStatus(status);
             
+            // Populate dynamic ATS feedback
+            populateAtsFeedback(candidate, extractedText);
+            
             // Save main Candidate details
             Candidate savedCandidate = candidateRepository.save(candidate);
             
@@ -188,6 +191,11 @@ public class ResumeParserServiceImpl implements ResumeParserService {
                         .resumeHash(savedCandidate.getResumeHash())
                         .jobDescription(savedCandidate.getJobDescription())
                         .shortlisted(savedCandidate.isShortlisted())
+                        .matchingSkills(savedCandidate.getMatchingSkills())
+                        .missingSkills(savedCandidate.getMissingSkills())
+                        .strengths(savedCandidate.getStrengths())
+                        .improvements(savedCandidate.getImprovements())
+                        .feedbackReason(savedCandidate.getFeedbackReason())
                         .build();
                 eligibleCandidateRepository.save(eligible);
             } else {
@@ -210,6 +218,11 @@ public class ResumeParserServiceImpl implements ResumeParserService {
                         .resumeHash(savedCandidate.getResumeHash())
                         .jobDescription(savedCandidate.getJobDescription())
                         .shortlisted(savedCandidate.isShortlisted())
+                        .matchingSkills(savedCandidate.getMatchingSkills())
+                        .missingSkills(savedCandidate.getMissingSkills())
+                        .strengths(savedCandidate.getStrengths())
+                        .improvements(savedCandidate.getImprovements())
+                        .feedbackReason(savedCandidate.getFeedbackReason())
                         .build();
                 notEligibleCandidateRepository.save(notEligible);
             }
@@ -482,45 +495,507 @@ public class ResumeParserServiceImpl implements ResumeParserService {
      * Returns a structured JSON with what it can find — no hardcoded dummy data.
      */
     private String buildFallbackJson(String text) {
-        // Extract email
         String email = "";
         java.util.regex.Matcher emailMatcher = java.util.regex.Pattern
             .compile("[a-zA-Z0-9._%+\\-]+@[a-zA-Z0-9.\\-]+\\.[a-zA-Z]{2,}").matcher(text);
         if (emailMatcher.find()) email = emailMatcher.group();
 
-        // Extract phone (10-digit Indian mobile or international)
         String phone = "";
         java.util.regex.Matcher phoneMatcher = java.util.regex.Pattern
             .compile("(?:\\+91[\\s-]?)?[6-9]\\d{9}|\\d{10}").matcher(text);
         if (phoneMatcher.find()) phone = phoneMatcher.group().replaceAll("[\\s-]", "");
 
-        // Extract LinkedIn URL
         String linkedin = "";
         java.util.regex.Matcher linkedinMatcher = java.util.regex.Pattern
             .compile("https?://(?:www\\.)?linkedin\\.com/in/[a-zA-Z0-9\\-_%]+").matcher(text);
         if (linkedinMatcher.find()) linkedin = linkedinMatcher.group();
 
+        // 1. Identify Sections & Split
+        String textLower = text.toLowerCase();
+        int skillsStart = findHeaderIndex(text, new String[]{"skills", "technical skills", "key skills"});
+        int eduStart = findHeaderIndex(text, new String[]{"education", "academic qualification", "academic history"});
+        int expStart = findHeaderIndex(text, new String[]{"experience", "work experience", "internship", "employment history", "work history"});
+        int projStart = findHeaderIndex(text, new String[]{"projects", "academic projects", "key projects"});
+        int certStart = findHeaderIndex(text, new String[]{"certificates", "certifications", "credentials"});
+
+        java.util.List<Section> sections = new java.util.ArrayList<>();
+        sections.add(new Section("contact", 0));
+        if (skillsStart != -1) sections.add(new Section("skills", skillsStart));
+        if (eduStart != -1) sections.add(new Section("education", eduStart));
+        if (expStart != -1) sections.add(new Section("experience", expStart));
+        if (projStart != -1) sections.add(new Section("projects", projStart));
+        if (certStart != -1) sections.add(new Section("certifications", certStart));
+
+        sections.sort((a, b) -> Integer.compare(a.start, b.start));
+
+        for (int i = 0; i < sections.size(); i++) {
+            int end = text.length();
+            if (i < sections.size() - 1) {
+                end = sections.get(i + 1).start;
+            }
+            sections.get(i).end = end;
+        }
+
+        String contactText = getSectionContent(sections, "contact", text);
+        String skillsText = getSectionContent(sections, "skills", text);
+        String eduText = getSectionContent(sections, "education", text);
+        String expText = getSectionContent(sections, "experience", text);
+        String projText = getSectionContent(sections, "projects", text);
+        String certText = getSectionContent(sections, "certifications", text);
+
+        // 2. Parse Contact Section
+        String fullName = "";
+        String[] contactLines = contactText.split("\\n");
+        for (String line : contactLines) {
+            String cleanLine = line.trim();
+            String lower = cleanLine.toLowerCase();
+            if (!cleanLine.isEmpty() && cleanLine.length() > 2 && cleanLine.length() < 40 
+                && !cleanLine.contains("@") && !cleanLine.contains("/") && !cleanLine.contains("\\") 
+                && !cleanLine.contains(":")
+                && !lower.contains("resume") && !lower.contains("curriculum")
+                && !lower.contains("developer") && !lower.contains("engineer")
+                && !lower.contains("designer") && !lower.contains("manager")
+                && !lower.contains("architect") && !lower.contains("analyst")
+                && !lower.contains("intern") && !lower.contains("specialist")
+                && !lower.contains("full stack") && !lower.contains("phone")
+                && !lower.contains("email") && !lower.contains("mobile")) {
+                fullName = cleanLine;
+                break;
+            }
+        }
+
+        String location = "";
+        for (String line : contactLines) {
+            String cleanLine = line.trim();
+            String lower = cleanLine.toLowerCase();
+            if (lower.contains("india") || lower.contains("hyderabad") || lower.contains("karimnagar") 
+                || lower.contains("bangalore") || lower.contains("bengaluru") || lower.contains("pune") 
+                || lower.contains("mumbai") || lower.contains("delhi") || lower.contains("chennai")
+                || lower.contains("secunderabad") || lower.contains("telangana") || lower.contains("andhra")) {
+                location = cleanLine.replaceAll("^[\\s,·•\\-]+", "").trim();
+                break;
+            }
+        }
+
+        // 3. Experience Years Heuristics
+        String totalExperience = "";
+        java.util.regex.Pattern expPat = java.util.regex.Pattern.compile("(\\d+\\+?\\s*(?:year|yr)s?\\s*(?:of)?\\s*experience)", java.util.regex.Pattern.CASE_INSENSITIVE);
+        java.util.regex.Matcher expMat = expPat.matcher(text);
+        if (expMat.find()) {
+            totalExperience = expMat.group(1).trim();
+        }
+
+        // 4. Professional Summary Heuristic
+        String professionalSummary = "";
+        java.util.regex.Pattern sumPat = java.util.regex.Pattern.compile("(?i)(?:summary|profile|objective)\\s*\\n([^\\n]+(?:\\n[^\\n]+)?)");
+        java.util.regex.Matcher sumMat = sumPat.matcher(text);
+        if (sumMat.find()) {
+            professionalSummary = sumMat.group(1).trim();
+        } else {
+            if (contactText.length() > 200) {
+                professionalSummary = contactText.substring(0, 200).replaceAll("\\s+", " ").trim();
+            } else {
+                professionalSummary = contactText.replaceAll("\\s+", " ").trim();
+            }
+        }
+
         try {
             com.fasterxml.jackson.databind.node.ObjectNode root = objectMapper.createObjectNode();
-            root.put("full_name", "");
+            root.put("full_name", fullName);
             root.put("email", email);
             root.put("phone", phone);
-            root.put("location", "");
+            root.put("location", location);
             root.put("linkedin", linkedin);
-            root.put("professional_summary", "");
-            root.set("education_details", objectMapper.createArrayNode());
-            root.set("experience_details", objectMapper.createArrayNode());
-            root.set("skills", objectMapper.createArrayNode());
-            root.set("certifications", objectMapper.createArrayNode());
-            root.set("projects", objectMapper.createArrayNode());
-            root.set("languages", objectMapper.createArrayNode());
-            root.put("total_experience", "");
+            root.put("professional_summary", professionalSummary);
+            root.put("total_experience", totalExperience);
+
+            // Skills
+            com.fasterxml.jackson.databind.node.ArrayNode skillsNode = objectMapper.createArrayNode();
+            String[] skillWords = {
+                "Java", "Spring Boot", "Spring", "React", "Angular", "JavaScript", "TypeScript",
+                "Python", "Django", "Flask", "HTML", "CSS", "SQL", "MySQL", "PostgreSQL", "MongoDB",
+                "AWS", "Azure", "Docker", "Kubernetes", "Git", "GitHub", "Jenkins", "Node.js", "Express",
+                "C++", "C#", ".NET", "PHP", "Laravel", "DevOps", "Agile", "Scrum", "REST API", "Linux",
+                "Hibernate", "Redux", "Bootstrap", "MUI", "Material-UI", "JSON"
+            };
+            String skillsSource = skillsText.isEmpty() ? textLower : skillsText.toLowerCase();
+            for (String skill : skillWords) {
+                if (skillsSource.contains(skill.toLowerCase())) {
+                    skillsNode.add(skill);
+                }
+            }
+            root.set("skills", skillsNode);
+
+            // Education details
+            com.fasterxml.jackson.databind.node.ArrayNode eduNode = objectMapper.createArrayNode();
+            String sourceEdu = eduText;
+            if (!sourceEdu.isEmpty()) {
+                String[] eduLines = sourceEdu.split("\\n");
+                String degree = "";
+                String institution = "";
+                String gradYear = "";
+                
+                for (String line : eduLines) {
+                    String cleanLine = line.trim();
+                    if (cleanLine.isEmpty()) continue;
+                    
+                    String lower = cleanLine.toLowerCase();
+                    if (lower.contains("bachelor") || lower.contains("b.tech") 
+                        || lower.contains("master") || lower.contains("m.tech") 
+                        || lower.contains("degree") || lower.contains("diploma")
+                        || lower.contains("b.e.") || lower.contains("b.s.")
+                        || lower.contains("m.s.") || lower.contains("m.e.")) {
+                        if (!degree.isEmpty()) {
+                            com.fasterxml.jackson.databind.node.ObjectNode eduObj = objectMapper.createObjectNode();
+                            eduObj.put("degree", degree);
+                            eduObj.put("specialization", "Technology");
+                            eduObj.put("institution", institution);
+                            eduObj.put("graduation_year", gradYear);
+                            eduObj.put("cgpa", "");
+                            eduNode.add(eduObj);
+                            institution = "";
+                            gradYear = "";
+                        }
+                        degree = cleanLine;
+                    } else if (lower.contains("institute") || lower.contains("college") 
+                        || lower.contains("university") || lower.contains("school") 
+                        || lower.contains("academy") || lower.contains("science")) {
+                        institution = cleanLine;
+                    } else if (cleanLine.matches(".*\\b(20\\d{2}|19\\d{2})\\b.*")) {
+                        java.util.regex.Matcher yrMat = java.util.regex.Pattern.compile("\\b(20\\d{2}|19\\d{2})\\b").matcher(cleanLine);
+                        while (yrMat.find()) {
+                            gradYear = yrMat.group(1);
+                        }
+                    }
+                }
+                if (!degree.isEmpty()) {
+                    com.fasterxml.jackson.databind.node.ObjectNode eduObj = objectMapper.createObjectNode();
+                    eduObj.put("degree", degree);
+                    eduObj.put("specialization", "Technology");
+                    eduObj.put("institution", institution);
+                    eduObj.put("graduation_year", gradYear);
+                    eduObj.put("cgpa", "");
+                    eduNode.add(eduObj);
+                }
+            }
+            root.set("education_details", eduNode);
+
+            // Experience details
+            com.fasterxml.jackson.databind.node.ArrayNode expNode = objectMapper.createArrayNode();
+            String sourceExp = expText;
+            if (!sourceExp.isEmpty()) {
+                String[] expLines = sourceExp.split("\\n");
+                String title = "";
+                String company = "";
+                String duration = "";
+                java.util.List<String> responsibilities = new java.util.ArrayList<>();
+                
+                for (String line : expLines) {
+                    String cleanLine = line.trim();
+                    if (cleanLine.isEmpty()) continue;
+                    
+                    String lower = cleanLine.toLowerCase();
+                    if (lower.equals("experience") || lower.equals("work experience") 
+                        || lower.equals("internship") || lower.equals("projects")
+                        || lower.equals("discription") || lower.equals("description")) {
+                        continue;
+                    }
+                    
+                    boolean isBullet = cleanLine.startsWith("•") || cleanLine.startsWith("-") || cleanLine.startsWith("*") 
+                                    || cleanLine.startsWith("▪") || cleanLine.startsWith("◦") || cleanLine.startsWith("\uFFFD")
+                                    || (cleanLine.length() > 0 && cleanLine.charAt(0) == '\uFFFD');
+                    
+                    if (isBullet) {
+                        String resp = cleanLine.substring(1).trim();
+                        if (!resp.isEmpty()) {
+                            responsibilities.add(resp);
+                        }
+                    } else if (lower.contains("developer") || lower.contains("engineer") 
+                        || lower.contains("intern") || lower.contains("analyst") 
+                        || lower.contains("manager") || lower.contains("architect")
+                        || lower.contains("lead") || lower.contains("programmer")) {
+                        
+                        if (!title.isEmpty()) {
+                            com.fasterxml.jackson.databind.node.ObjectNode expObj = objectMapper.createObjectNode();
+                            expObj.put("company", company);
+                            expObj.put("job_title", title);
+                            expObj.put("start_date", "");
+                            expObj.put("end_date", "");
+                            expObj.put("duration", duration);
+                            com.fasterxml.jackson.databind.node.ArrayNode respNode = objectMapper.createArrayNode();
+                            for (String r : responsibilities) respNode.add(r);
+                            expObj.set("responsibilities", respNode);
+                            expNode.add(expObj);
+                            
+                            company = "";
+                            duration = "";
+                            responsibilities.clear();
+                        }
+                        title = cleanLine;
+                    } else {
+                        if (company.isEmpty() && (lower.contains("solutions") || lower.contains("technologies") 
+                            || lower.contains("pvt") || lower.contains("ltd") || lower.contains("software") 
+                            || lower.contains("inc") || lower.contains("nerostech") || lower.contains("corp") 
+                            || lower.contains("company") || lower.contains("limited"))) {
+                            company = cleanLine;
+                        } else if (duration.isEmpty() && (lower.contains("year") || lower.contains("month") 
+                            || (lower.contains("20") && lower.contains("present")) || lower.contains(" – ") || lower.contains(" - "))) {
+                            duration = cleanLine;
+                        } else {
+                            if (!responsibilities.isEmpty()) {
+                                int lastIdx = responsibilities.size() - 1;
+                                responsibilities.set(lastIdx, responsibilities.get(lastIdx) + " " + cleanLine);
+                            } else if (!title.isEmpty() && company.isEmpty()) {
+                                company = cleanLine;
+                            } else {
+                                responsibilities.add(cleanLine);
+                            }
+                        }
+                    }
+                }
+                if (!title.isEmpty()) {
+                    com.fasterxml.jackson.databind.node.ObjectNode expObj = objectMapper.createObjectNode();
+                    expObj.put("company", company);
+                    expObj.put("job_title", title);
+                    expObj.put("start_date", "");
+                    expObj.put("end_date", "");
+                    expObj.put("duration", duration);
+                    com.fasterxml.jackson.databind.node.ArrayNode respNode = objectMapper.createArrayNode();
+                    for (String r : responsibilities) respNode.add(r);
+                    expObj.set("responsibilities", respNode);
+                    expNode.add(expObj);
+                }
+            }
+            root.set("experience_details", expNode);
+
+            // Certifications
+            com.fasterxml.jackson.databind.node.ArrayNode certNode = objectMapper.createArrayNode();
+            String sourceCert = certText;
+            if (sourceCert.isEmpty()) {
+                String[] allLines = text.split("\\n");
+                for (String line : allLines) {
+                    String cleanLine = line.trim();
+                    if (cleanLine.isEmpty()) continue;
+                    String lower = cleanLine.toLowerCase();
+                    if (lower.contains("certificate") || lower.contains("certification") || lower.contains("certified")) {
+                        certNode.add(cleanLine);
+                    }
+                }
+            } else {
+                String[] certLines = sourceCert.split("\\n");
+                for (String line : certLines) {
+                    String cleanLine = line.trim();
+                    if (cleanLine.isEmpty()) continue;
+                    String lower = cleanLine.toLowerCase();
+                    if (lower.equals("certificates") || lower.equals("certifications") || lower.equals("credentials")) {
+                        continue;
+                    }
+                    if (cleanLine.startsWith("•") || cleanLine.startsWith("-") || cleanLine.startsWith("*") || cleanLine.startsWith("▪") || cleanLine.startsWith("◦") || cleanLine.startsWith("\uFFFD")) {
+                        cleanLine = cleanLine.substring(1).trim();
+                    }
+                    if (!cleanLine.isEmpty()) {
+                        certNode.add(cleanLine);
+                    }
+                }
+            }
+            root.set("certifications", certNode);
+
+            // Projects
+            com.fasterxml.jackson.databind.node.ArrayNode projNode = objectMapper.createArrayNode();
+            String sourceProj = projText;
+            if (!sourceProj.isEmpty()) {
+                String[] projLines = sourceProj.split("\\n");
+                String lastLine = "";
+                for (String line : projLines) {
+                    String cleanLine = line.trim();
+                    if (cleanLine.isEmpty()) continue;
+                    
+                    String lower = cleanLine.toLowerCase();
+                    if (lower.contains("experience") || lower.equals("projects") || lower.equals("discription") || lower.equals("description")) {
+                        continue;
+                    }
+                    
+                    if (lower.contains("technologies used") || lower.contains("technologies:") || lower.startsWith("tech used")) {
+                        if (!lastLine.isEmpty() && !projNode.toString().contains(lastLine)) {
+                            projNode.add(lastLine);
+                        }
+                    } else if (lower.contains("project:") || lower.contains("project -")) {
+                        String pName = cleanLine.replaceAll("(?i)project\\s*[:\\-]\\s*", "").trim();
+                        if (!pName.isEmpty()) {
+                            projNode.add(pName);
+                        }
+                    } else if (lower.contains("website development") || lower.contains("handinhand") 
+                        || lower.contains("y-mart") || lower.contains("e-commerce")) {
+                        projNode.add(cleanLine);
+                    }
+                    
+                    lastLine = cleanLine;
+                }
+            }
+            root.set("projects", projNode);
+
+            // Languages
+            com.fasterxml.jackson.databind.node.ArrayNode langNode = objectMapper.createArrayNode();
+            String[] langs = {"English", "Hindi", "Telugu", "Tamil", "Spanish", "French", "German", "Japanese"};
+            for (String lang : langs) {
+                if (textLower.contains(lang.toLowerCase())) {
+                    langNode.add(lang);
+                }
+            }
+            root.set("languages", langNode);
+
             return objectMapper.writeValueAsString(root);
         } catch (Exception e) {
-            return "{\"full_name\":\"\",\"email\":\"" + email + "\",\"phone\":\"" + phone +
-                   "\",\"location\":\"\",\"linkedin\":\"\",\"professional_summary\":\"\"," +
+            return "{\"full_name\":\"" + fullName + "\",\"email\":\"" + email + "\",\"phone\":\"" + phone +
+                   "\",\"location\":\"" + location + "\",\"linkedin\":\"" + linkedin + "\",\"professional_summary\":\"" + professionalSummary + "\"," +
                    "\"education_details\":[],\"experience_details\":[],\"skills\":[]," +
-                   "\"certifications\":[],\"projects\":[],\"languages\":[],\"total_experience\":\"\"}";
+                   "\"certifications\":[],\"projects\":[],\"languages\":[],\"total_experience\":\"" + totalExperience + "\"}";
+        }
+    }
+
+    private int findHeaderIndex(String text, String[] headers) {
+        String textLower = text.toLowerCase();
+        for (String header : headers) {
+            String regex = "(?mi)(?:^|\\r|\\n)\\s*" + java.util.regex.Pattern.quote(header) + "\\s*[:\\-]?\\s*(?:\\r|\\n|$)";
+            java.util.regex.Pattern pattern = java.util.regex.Pattern.compile(regex);
+            java.util.regex.Matcher matcher = pattern.matcher(textLower);
+            if (matcher.find()) {
+                int start = matcher.start();
+                while (start < text.length() && (text.charAt(start) == '\r' || text.charAt(start) == '\n' || Character.isWhitespace(text.charAt(start)))) {
+                    start++;
+                }
+                return start;
+            }
+        }
+        return -1;
+    }
+
+    private String getSectionContent(java.util.List<Section> sections, String name, String text) {
+        for (Section sec : sections) {
+            if (sec.name.equals(name)) {
+                String secText = text.substring(sec.start, sec.end).trim();
+                int firstNewLine = secText.indexOf("\n");
+                if (firstNewLine != -1) {
+                    return secText.substring(firstNewLine).trim();
+                }
+                return secText;
+            }
+        }
+        return "";
+    }
+
+    private static class Section {
+        String name;
+        int start;
+        int end;
+        Section(String name, int start) {
+            this.name = name;
+            this.start = start;
+        }
+    }
+
+    private void populateAtsFeedback(Candidate candidate, String extractedText) {
+        String jdToUse = (candidate.getJobDescription() != null && !candidate.getJobDescription().trim().isEmpty()) 
+                ? candidate.getJobDescription() : "General IT/Software Developer role evaluation standard.";
+        
+        String resumeTextLower = extractedText.toLowerCase();
+        String jdLower = jdToUse.toLowerCase();
+
+        // 1. Skill analysis
+        String[] techDictionary = {
+            "java", "spring boot", "spring", "react", "angular", "javascript", "js", "typescript", "ts",
+            "python", "django", "flask", "html", "css", "sql", "mysql", "postgresql", "oracle", "mongodb",
+            "aws", "azure", "gcp", "docker", "kubernetes", "k8s", "git", "github", "ci/cd", "jenkins",
+            "node.js", "nodejs", "node", "express", "rest api", "rest", "api", "microservices", "testing",
+            "junit", "c++", "c#", ".net", "php", "laravel", "ruby", "rails", "swift", "kotlin", "android",
+            "ios", "flutter", "devops", "agile", "scrum", "jira", "maven", "gradle", "terraform"
+        };
+
+        java.util.Set<String> requiredSkills = new java.util.HashSet<>();
+        for (String skill : techDictionary) {
+            if (jdLower.contains(skill)) {
+                requiredSkills.add(skill);
+            }
+        }
+        if (requiredSkills.isEmpty()) {
+            requiredSkills.addAll(java.util.Arrays.asList("java", "javascript", "sql", "git", "api", "testing"));
+        }
+
+        java.util.List<String> matchedList = new java.util.ArrayList<>();
+        java.util.List<String> missingList = new java.util.ArrayList<>();
+        for (String skill : requiredSkills) {
+            if (resumeTextLower.contains(skill)) {
+                String capSkill = skill.substring(0, 1).toUpperCase() + skill.substring(1);
+                matchedList.add(capSkill);
+            } else {
+                String capSkill = skill.substring(0, 1).toUpperCase() + skill.substring(1);
+                missingList.add(capSkill);
+            }
+        }
+
+        // 2. Strengths list
+        java.util.List<String> strengths = new java.util.ArrayList<>();
+        if (matchedList.size() >= 4) {
+            strengths.add("Strong technical alignment: matched " + matchedList.size() + " key role requirements.");
+        } else if (matchedList.size() > 0) {
+            strengths.add("Found solid foundation in core technologies: " + String.join(", ", matchedList));
+        }
+        
+        if (candidate.getTotalYearsExperience() != null && !candidate.getTotalYearsExperience().isEmpty()) {
+            strengths.add("Professional experience of " + candidate.getTotalYearsExperience() + " is listed.");
+        }
+        if (candidate.getEducationDetails() != null && !candidate.getEducationDetails().equals("[]")) {
+            strengths.add("Academic background in engineering/technology fields clearly presented.");
+        }
+        if (candidate.getProjects() != null && !candidate.getProjects().equals("[]")) {
+            strengths.add("Hands-on capability demonstrated via projects like " + candidate.getProjects());
+        }
+        if (candidate.getCertifications() != null && !candidate.getCertifications().equals("[]")) {
+            strengths.add("Professional credentials bolstered by industry certifications.");
+        }
+        if (strengths.isEmpty()) {
+            strengths.add("Clear contact and identity information formatted correctly.");
+        }
+
+        // 3. Improvements list
+        java.util.List<String> improvements = new java.util.ArrayList<>();
+        if (!missingList.isEmpty()) {
+            improvements.add("Include missing core keywords such as: " + String.join(", ", missingList));
+        }
+        if (candidate.getCertifications() == null || candidate.getCertifications().equals("[]") || candidate.getCertifications().isEmpty()) {
+            improvements.add("Consider acquiring industry-recognized certifications (e.g. AWS, Oracle) to boost profile authority.");
+        }
+        if (candidate.getProjects() == null || candidate.getProjects().equals("[]") || candidate.getProjects().isEmpty()) {
+            improvements.add("Add practical projects with Git repositories to showcase code delivery.");
+        }
+        if (candidate.getTotalYearsExperience() == null || candidate.getTotalYearsExperience().isEmpty()) {
+            improvements.add("Detail internships or development experience to satisfy role tenure requirements.");
+        }
+        if (improvements.isEmpty()) {
+            improvements.add("Format descriptions using bullet points to enhance readability for ATS crawlers.");
+        }
+
+        // 4. Feedback Reason
+        String feedbackReason;
+        if (candidate.getAtsScore() >= 80) {
+            feedbackReason = "Candidate qualified for the next round because their resume matches the technical requirements with a score of " 
+                + candidate.getAtsScore() + "%. The profile shows strong alignment with " + String.join(", ", matchedList) + ", a valid academic background, and relevant experience.";
+        } else {
+            feedbackReason = "Candidate did not qualify because their ATS score of " + candidate.getAtsScore() + "% is below our 80% threshold. The resume has mismatching technical keywords and lacks sufficient experience/certifications.";
+        }
+
+        try {
+            candidate.setMatchingSkills(objectMapper.writeValueAsString(matchedList));
+            candidate.setMissingSkills(objectMapper.writeValueAsString(missingList));
+            candidate.setStrengths(objectMapper.writeValueAsString(strengths));
+            candidate.setImprovements(objectMapper.writeValueAsString(improvements));
+            candidate.setFeedbackReason(feedbackReason);
+        } catch (Exception e) {
+            candidate.setMatchingSkills("[]");
+            candidate.setMissingSkills("[]");
+            candidate.setStrengths("[]");
+            candidate.setImprovements("[]");
+            candidate.setFeedbackReason("Evaluation complete.");
         }
     }
 }

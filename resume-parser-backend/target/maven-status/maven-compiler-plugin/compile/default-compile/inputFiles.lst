@@ -22,6 +22,7 @@ D:\Narayana\resume_parsingV2\resume-parser-backend\src\main\java\com\examportal\
 D:\Narayana\resume_parsingV2\resume-parser-backend\src\main\java\com\examportal\serviceImpl\FileServiceImpl.java
 D:\Narayana\resume_parsingV2\resume-parser-backend\src\main\java\com\examportal\config\FirebaseConfig.java
 D:\Narayana\resume_parsingV2\resume-parser-backend\src\main\java\com\examportal\serviceImpl\OtpServiceImpl.java
+D:\Narayana\resume_parsingV2\resume-parser-backend\src\main\java\com\examportal\entity\ShortlistedCandidate.java
 D:\Narayana\resume_parsingV2\resume-parser-backend\src\main\java\com\examportal\enums\ExamStatus.java
 D:\Narayana\resume_parsingV2\resume-parser-backend\src\main\java\com\examportal\payload\AuthResponse.java
 D:\Narayana\resume_parsingV2\resume-parser-backend\src\main\java\com\examportal\repository\NotEligibleCandidateRepository.java
@@ -40,3 +41,4 @@ D:\Narayana\resume_parsingV2\resume-parser-backend\src\main\java\com\examportal\
 D:\Narayana\resume_parsingV2\resume-parser-backend\src\main\java\com\examportal\payload\RegisterRequest.java
 D:\Narayana\resume_parsingV2\resume-parser-backend\src\main\java\com\examportal\enums\Role.java
 D:\Narayana\resume_parsingV2\resume-parser-backend\src\main\java\com\examportal\enums\ResultStatus.java
+D:\Narayana\resume_parsingV2\resume-parser-backend\src\main\java\com\examportal\repository\ShortlistedCandidateRepository.java

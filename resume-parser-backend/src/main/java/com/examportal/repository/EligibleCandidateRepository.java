@@ -29,4 +29,13 @@ public class EligibleCandidateRepository {
             throw new RuntimeException("Error saving eligible candidate to Firestore: " + e.getMessage(), e);
         }
     }
+
+    public void deleteById(String id) {
+        if (id == null || id.isEmpty()) return;
+        try {
+            getCollection().document(id).delete().get();
+        } catch (Exception e) {
+            throw new RuntimeException("Error deleting eligible candidate from Firestore: " + e.getMessage(), e);
+        }
+    }
 }

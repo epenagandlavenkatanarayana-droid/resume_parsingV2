@@ -382,6 +382,88 @@ const UploadResume = () => {
                       </div>
                     </div>
                   </div>
+
+                  {/* ── ATS FEEDBACK CARD ── */}
+                  <div className="feedback-card">
+                    <div className="feedback-card-header">
+                      {result.Status === 'Eligible' ? (
+                        <>🎉 Qualification Verdict</>
+                      ) : (
+                        <>⚠️ Rejection Verdict & Recommendations</>
+                      )}
+                    </div>
+                    <div className="feedback-card-body">
+                      {result.FeedbackReason || 'Resume evaluation process completed.'}
+                    </div>
+                  </div>
+
+                  {/* ── SKILLS COMPARISON ── */}
+                  <div className="skills-comparison-grid">
+                    <div className="skills-box">
+                      <div className="skills-box-title">✅ Matching Skills</div>
+                      <div className="skills-box-tags">
+                        {result.MatchingSkills && result.MatchingSkills.length > 0 ? (
+                          result.MatchingSkills.map((skill, index) => (
+                            <span key={index} className="skill-tag match">{skill}</span>
+                          ))
+                        ) : (
+                          <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>None identified</span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="skills-box">
+                      <div className="skills-box-title">❌ Missing Keywords</div>
+                      <div className="skills-box-tags">
+                        {result.MissingSkills && result.MissingSkills.length > 0 ? (
+                          result.MissingSkills.map((skill, index) => (
+                            <span key={index} className="skill-tag missing">{skill}</span>
+                          ))
+                        ) : (
+                          <span style={{ fontSize: '11px', color: 'var(--success)' }}>None missing</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ── STRENGTHS & AREAS FOR IMPROVEMENT ── */}
+                  <div className="audit-lists-grid">
+                    <div className="audit-box">
+                      <div className="audit-box-title">💪 Resume Strengths</div>
+                      <div className="audit-items">
+                        {result.Strengths && result.Strengths.length > 0 ? (
+                          result.Strengths.map((str, index) => (
+                            <div key={index} className="audit-item">
+                              <span className="audit-icon-success">✓</span>
+                              <span>{str}</span>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="audit-item">
+                            <span className="audit-icon-success">✓</span>
+                            <span>Standard layout metrics satisfied</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="audit-box">
+                      <div className="audit-box-title">📈 Areas for Improvement</div>
+                      <div className="audit-items">
+                        {result.Improvements && result.Improvements.length > 0 ? (
+                          result.Improvements.map((imp, index) => (
+                            <div key={index} className="audit-item">
+                              <span className="audit-icon-warning">!</span>
+                              <span>{imp}</span>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="audit-item">
+                            <span className="audit-icon-warning">!</span>
+                            <span>Optimal parsing metrics aligned</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                   
                   <button
                     onClick={() => setResult(null)}
