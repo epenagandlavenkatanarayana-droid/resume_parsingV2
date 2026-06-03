@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import { BiLogOut, BiUserCircle } from 'react-icons/bi';
 import { MdOutlineLibraryBooks } from 'react-icons/md';
+import { toast } from 'react-toastify';
 
 const Navbar = () => {
   const { user, logout, isAuthenticated } = useContext(AuthContext);
@@ -10,6 +11,7 @@ const Navbar = () => {
 
   const handleLogout = () => {
     logout();
+    toast.success('Logout successfully');
     navigate('/login');
   };
 

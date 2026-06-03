@@ -29,4 +29,11 @@ public class AuthController {
         AuthResponse response = authService.login(loginRequest);
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
+
+    @PostMapping("/logout")
+    public ResponseEntity<ApiResponse> logout() {
+        // JWT is stateless — logout is handled client-side by discarding the token.
+        // This endpoint simply acknowledges the request so the frontend doesn't get a 500.
+        return new ResponseEntity<>(new ApiResponse("Logged out successfully.", true), HttpStatus.OK);
+    }
 }

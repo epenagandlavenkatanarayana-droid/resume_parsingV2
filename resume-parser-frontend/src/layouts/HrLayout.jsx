@@ -14,12 +14,12 @@ const HrLayout = () => {
   const handleLogout = async () => {
     try {
       await api.post('/auth/logout');
-      logout();
-      navigate('/login');
     } catch (error) {
-      console.error(error);
-      toast.error('Failed to logout');
+      // Server-side logout failed (e.g. token already expired) — proceed with client-side logout anyway
+      console.warn('Server logout failed, clearing session locally:', error?.response?.status);
+    } finally {
       logout();
+      toast.success('Logout successfully');
       navigate('/login');
     }
   };

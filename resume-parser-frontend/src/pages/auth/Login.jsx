@@ -57,7 +57,7 @@ const Login = () => {
       
       const user = { name, email, role };
       login(user, token);
-      toast.success('Welcome back, ' + name + '!');
+      toast.success('Login successfully');
       
       if (role === 'ADMIN' || role === 'HR') {
         navigate('/hr/dashboard');
