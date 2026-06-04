@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import api from '../../services/api';
 import { toast } from 'react-toastify';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -14,6 +15,13 @@ const HrDashboard = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedId, setExpandedId] = useState(null);
   const [activeFilter, setActiveFilter] = useState('all');
+  const location = useLocation();
+
+  useEffect(() => {
+    if (location.state && location.state.filter) {
+      setActiveFilter(location.state.filter);
+    }
+  }, [location.state]);
 
   const fetchProfiles = async () => {
     try {
@@ -103,7 +111,7 @@ const HrDashboard = () => {
             onClick={() => setActiveFilter(stat.filter)}
             className={`rounded-xl border p-3 md:p-4 transition-all duration-200 ${stat.color} ${
               activeFilter === stat.filter
-                ? 'ring-2 ring-blue-550 ring-offset-2 scale-[1.02] shadow-sm'
+                ? 'ring-2 ring-blue-600 ring-offset-2 scale-[1.02] shadow-sm'
                 : 'hover:scale-[1.01]'
             }`}
           >
