@@ -10,17 +10,21 @@ public class ResumeParserApplication {
 		try {
 			SpringApplication.run(ResumeParserApplication.class, args);
 		} catch (Throwable t) {
-			System.err.println("=== STARTUP EXCEPTION DETECTED ===");
-			t.printStackTrace();
+			StringBuilder sb = new StringBuilder();
+			sb.append("\n=================================================================\n");
+			sb.append("=== STARTUP EXCEPTION CAUSE CHAIN ===\n");
 			Throwable cause = t;
 			int depth = 0;
-			while (cause != null && depth < 20) {
-				System.err.println("--- Depth " + depth + " cause: " + cause.getClass().getName() + " ---");
-				System.err.println(cause.getMessage());
+			while (cause != null && depth < 10) {
+				sb.append("[").append(depth).append("] ").append(cause.getClass().getName()).append(": ").append(cause.getMessage()).append("\n");
+				if (cause.getStackTrace() != null && cause.getStackTrace().length > 0) {
+					sb.append("   at ").append(cause.getStackTrace()[0].toString()).append("\n");
+				}
 				cause = cause.getCause();
 				depth++;
 			}
-			System.err.println("=== END OF STARTUP EXCEPTION DETAILS ===");
+			sb.append("=================================================================\n");
+			System.err.println(sb.toString());
 			throw t;
 		}
 	}
