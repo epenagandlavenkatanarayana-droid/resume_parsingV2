@@ -1,6 +1,7 @@
 D:\Narayana\resume_parsingV2\resume-parser-backend\src\main\java\com\examportal\entity\User.java
 D:\Narayana\resume_parsingV2\resume-parser-backend\src\main\java\com\examportal\payload\OtpLoginRequest.java
 D:\Narayana\resume_parsingV2\resume-parser-backend\src\main\java\com\examportal\controller\CandidateController.java
+D:\Narayana\resume_parsingV2\resume-parser-backend\src\main\java\com\examportal\config\JacksonConfig.java
 D:\Narayana\resume_parsingV2\resume-parser-backend\src\main\java\com\examportal\config\DatabaseSeeder.java
 D:\Narayana\resume_parsingV2\resume-parser-backend\src\main\java\com\examportal\exception\ResourceNotFoundException.java
 D:\Narayana\resume_parsingV2\resume-parser-backend\src\main\java\com\examportal\ResumeParserApplication.java
@@ -23,6 +24,7 @@ D:\Narayana\resume_parsingV2\resume-parser-backend\src\main\java\com\examportal\
 D:\Narayana\resume_parsingV2\resume-parser-backend\src\main\java\com\examportal\serviceImpl\FileServiceImpl.java
 D:\Narayana\resume_parsingV2\resume-parser-backend\src\main\java\com\examportal\config\FirebaseConfig.java
 D:\Narayana\resume_parsingV2\resume-parser-backend\src\main\java\com\examportal\serviceImpl\OtpServiceImpl.java
+D:\Narayana\resume_parsingV2\resume-parser-backend\src\main\java\com\examportal\config\WebClientConfig.java
 D:\Narayana\resume_parsingV2\resume-parser-backend\src\main\java\com\examportal\entity\ShortlistedCandidate.java
 D:\Narayana\resume_parsingV2\resume-parser-backend\src\main\java\com\examportal\enums\ExamStatus.java
 D:\Narayana\resume_parsingV2\resume-parser-backend\src\main\java\com\examportal\payload\AuthResponse.java
