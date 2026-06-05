@@ -16,17 +16,11 @@ public class ResumeParserApplication {
 			Throwable cause = t;
 			int depth = 0;
 			while (cause != null && depth < 10) {
-				sb.append("[").append(depth).append("] ").append(cause.getClass().getName()).append(": ").append(cause.getMessage()).append("\n");
-				if (cause.getStackTrace() != null && cause.getStackTrace().length > 0) {
-					sb.append("   at ").append(cause.getStackTrace()[0].toString()).append("\n");
+				String msg = cause.getMessage();
+				if (msg != null && msg.length() > 100) {
+					msg = msg.substring(0, 100) + "...";
 				}
-				// Print suppressed exceptions
-				for (Throwable supp : cause.getSuppressed()) {
-					sb.append("   [SUPPRESSED] ").append(supp.getClass().getName()).append(": ").append(supp.getMessage()).append("\n");
-					if (supp.getStackTrace() != null && supp.getStackTrace().length > 0) {
-						sb.append("      at ").append(supp.getStackTrace()[0].toString()).append("\n");
-					}
-				}
+				sb.append("[").append(depth).append("] ").append(cause.getClass().getSimpleName()).append(": ").append(msg).append("\n");
 				cause = cause.getCause();
 				depth++;
 			}
