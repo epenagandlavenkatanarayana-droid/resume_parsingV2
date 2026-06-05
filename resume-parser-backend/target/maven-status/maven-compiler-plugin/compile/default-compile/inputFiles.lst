@@ -8,6 +8,7 @@ D:\Narayana\resume_parsingV2\resume-parser-backend\src\main\java\com\examportal\
 D:\Narayana\resume_parsingV2\resume-parser-backend\src\main\java\com\examportal\security\JwtAuthenticationEntryPoint.java
 D:\Narayana\resume_parsingV2\resume-parser-backend\src\main\java\com\examportal\entity\Candidate.java
 D:\Narayana\resume_parsingV2\resume-parser-backend\src\main\java\com\examportal\payload\OtpRequest.java
+D:\Narayana\resume_parsingV2\resume-parser-backend\src\main\java\com\examportal\controller\HealthController.java
 D:\Narayana\resume_parsingV2\resume-parser-backend\src\main\java\com\examportal\payload\ApiResponse.java
 D:\Narayana\resume_parsingV2\resume-parser-backend\src\main\java\com\examportal\repository\UserRepository.java
 D:\Narayana\resume_parsingV2\resume-parser-backend\src\main\java\com\examportal\serviceImpl\ResumeParserServiceImpl.java
