@@ -17,8 +17,8 @@ WORKDIR /app
 # Copy the built jar from Stage 1
 COPY --from=build /app/target/resume-parser-backend-0.0.1-SNAPSHOT.jar app.jar
 
-# Expose default port (overridden dynamically by Render PORT env variable)
-EXPOSE 8081
+# Expose Render's default port
+EXPOSE 10000
 
-# Safe Entrypoint wrapping in a shell to ensure ${PORT} is expanded dynamically
-ENTRYPOINT ["sh", "-c", "java -Dserver.port=${PORT:8081} -jar app.jar"]
+# Use ${PORT:-10000} — the dash is required in bash for a proper default value
+ENTRYPOINT ["sh", "-c", "java -Dserver.port=${PORT:-10000} -jar app.jar"]
