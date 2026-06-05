@@ -1,0 +1,27 @@
+# System/OS
+.DS_Store
+Thumbs.db
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+*.tmp
+
+# Java/Maven Build
+**/target/
+**/*.class
+**/dependency-reduced-pom.xml
+
+# Node/Vite Build
+**/node_modules/
+**/dist/
+**/dist-ssr/
+*.local
+
+# Firebase & Credentials
+**/firebase-service-account.json
+
+# Local Uploads/Data
+**/uploads/
