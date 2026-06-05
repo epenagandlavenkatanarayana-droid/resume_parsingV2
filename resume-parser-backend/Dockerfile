@@ -10,8 +10,9 @@ RUN mvn dependency:go-offline -B
 COPY src ./src
 RUN mvn clean package -DskipTests
 
-# Stage 2: Create a lightweight runtime image using eclipse-temurin JRE
-FROM eclipse-temurin:17-jre-alpine
+# Stage 2: Create a lightweight runtime image using eclipse-temurin JRE (Debian-based, NOT Alpine)
+# Alpine (musl libc) breaks Firebase Admin SDK's gRPC native libraries
+FROM eclipse-temurin:17-jre
 WORKDIR /app
 
 # Copy the built jar from Stage 1
