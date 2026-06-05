@@ -3,6 +3,7 @@ com\examportal\enums\Role.class
 com\examportal\entity\Candidate$CandidateBuilder.class
 com\examportal\controller\HrController$5.class
 com\examportal\entity\EligibleCandidate$EligibleCandidateBuilder.class
+com\examportal\config\JacksonConfig.class
 com\examportal\security\JwtUtil.class
 com\examportal\dto\CandidateResponse.class
 com\examportal\payload\AuthRequest.class
@@ -45,6 +46,7 @@ com\examportal\payload\OtpLoginRequest.class
 com\examportal\controller\HrController$7.class
 com\examportal\serviceImpl\AuthServiceImpl.class
 com\examportal\config\DatabaseSeeder.class
+com\examportal\config\WebClientConfig.class
 com\examportal\entity\ShortlistedCandidate$ShortlistedCandidateBuilder.class
 com\examportal\config\FirebaseConfig.class
 com\examportal\controller\AuthController.class
@@ -59,4 +61,5 @@ com\examportal\serviceImpl\ResumeParserServiceImpl$Section.class
 com\examportal\repository\EligibleCandidateRepository.class
 com\examportal\controller\HrController$6.class
 com\examportal\controller\CandidateController.class
+com\examportal\controller\HealthController.class
 com\examportal\enums\ExamStatus.class
