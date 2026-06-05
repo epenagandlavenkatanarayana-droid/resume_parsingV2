@@ -1,6 +1,6 @@
 import { useState, useContext } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
-import { BiLogOut, BiUser, BiBriefcase, BiMenu, BiX } from 'react-icons/bi';
+import { BiLogOut, BiUser, BiMenu, BiX } from 'react-icons/bi';
 import { AuthContext } from '../context/AuthContext';
 import api from '../services/api';
 import { toast } from 'react-toastify';
@@ -27,37 +27,20 @@ const HrLayout = () => {
     }
   };
 
-  const menuItems = [
-    {
-      path: '/hr/dashboard',
-      name: 'Resumes Dashboard',
-      icon: <BiBriefcase className="text-xl" />,
-      subItems: [
-        { filter: 'all', name: 'All Resumes', dotColor: 'bg-blue-500' },
-        { filter: 'eligible', name: 'Eligible', dotColor: 'bg-emerald-500' },
-        { filter: 'shortlisted', name: 'Shortlisted', dotColor: 'bg-amber-500' },
-        { filter: 'not_eligible', name: 'Not Eligible', dotColor: 'bg-rose-500' },
-      ],
-    },
-    {
-      path: '/hr/profile',
-      name: 'Profile Settings',
-      icon: <BiUser className="text-xl" />,
-    },
-  ];
+  const menuItems = [];
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
       {/* Logo */}
       <div className="p-5 border-b border-slate-100">
-        <div className="flex items-center gap-3">
+        <NavLink to="/hr/dashboard" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
           <div className="bg-blue-600 text-white p-2 rounded-lg flex-shrink-0">
             <BiUser className="text-xl" />
           </div>
           <h1 className="text-lg font-bold text-slate-900 leading-tight">
             Resume Parser <span className="text-blue-600">HR</span>
           </h1>
-        </div>
+        </NavLink>
       </div>
 
       {/* Navigation */}
@@ -111,11 +94,37 @@ const HrLayout = () => {
         })}
       </nav>
 
-      {/* Logout - Fixed Bottom */}
-      <div className="mt-auto p-3 border-t border-slate-100">
+      {/* User profile & Logout - Fixed Bottom */}
+      <div className="mt-auto p-3 border-t border-slate-100 space-y-2">
+        {user && (
+          <NavLink
+            to="/hr/profile"
+            onClick={() => setSidebarOpen(false)}
+            className={({ isActive }) =>
+              `flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 ${
+                isActive
+                  ? 'bg-blue-50 border border-blue-100 text-blue-600'
+                  : 'hover:bg-slate-50 border border-transparent text-slate-700 hover:text-slate-900'
+              }`
+            }
+          >
+            <div className="h-9 w-9 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0 text-blue-600 font-bold">
+              {user?.name?.charAt(0)?.toUpperCase() || 'H'}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold truncate leading-none">
+                {user?.name || 'HR User'}
+              </p>
+              <p className="text-[11px] text-slate-500 truncate mt-1">
+                {user?.email || 'hr@company.com'}
+              </p>
+            </div>
+          </NavLink>
+        )}
+
         <button
           onClick={handleLogout}
-          className="flex items-center gap-3 w-full px-4 py-3 text-red-600 hover:bg-red-50 rounded-xl font-medium transition-colors text-sm"
+          className="flex items-center gap-3 w-full px-4 py-3 text-red-650 hover:bg-red-50 rounded-xl font-medium transition-colors text-sm"
         >
           <BiLogOut className="text-xl flex-shrink-0" />
           Logout
@@ -128,7 +137,7 @@ const HrLayout = () => {
     <div className="flex h-screen bg-slate-50 overflow-hidden">
       {/* Desktop Sidebar */}
       <aside className="hidden md:flex flex-col h-screen w-64 bg-white border-r border-slate-200 shadow-sm flex-shrink-0">
-        <SidebarContent />
+        {SidebarContent()}
       </aside>
 
       {/* Mobile Sidebar */}
@@ -163,7 +172,7 @@ const HrLayout = () => {
                 <BiX className="text-2xl" />
               </button>
 
-              <SidebarContent />
+              {SidebarContent()}
             </motion.aside>
           </>
         )}
@@ -176,7 +185,7 @@ const HrLayout = () => {
           <div className="flex items-center gap-3">
             <button
               onClick={() => setSidebarOpen(true)}
-              className="md:hidden p-2 rounded-lg hover:bg-slate-100 text-slate-600 transition-colors"
+              className="md:hidden p-2 rounded-lg hover:bg-slate-100 text-slate-650 transition-colors"
               aria-label="Open sidebar"
             >
               <BiMenu className="text-2xl" />
@@ -186,17 +195,6 @@ const HrLayout = () => {
               HR Panel
             </h2>
           </div>
-
-          {user && (
-            <div className="hidden md:flex items-center gap-2">
-              <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
-                <BiUser className="text-blue-600" />
-              </div>
-              <span className="text-sm font-medium text-slate-700">
-                {user?.name || 'HR User'}
-              </span>
-            </div>
-          )}
         </header>
 
         {/* Page Content */}

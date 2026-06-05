@@ -62,11 +62,27 @@ const AdminLayout = () => {
         ))}
       </nav>
 
-      {/* Logout */}
-      <div className="p-3 border-t border-slate-100">
+      {/* User profile & Logout */}
+      <div className="p-3 border-t border-slate-100 space-y-2">
+        {user && (
+          <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl border border-transparent text-slate-700">
+            <div className="h-9 w-9 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0 text-purple-605 font-bold">
+              {user?.name?.charAt(0)?.toUpperCase() || 'A'}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold truncate leading-none">
+                {user?.name || 'Admin User'}
+              </p>
+              <p className="text-[11px] text-slate-550 truncate mt-1">
+                {user?.email || 'admin@company.com'}
+              </p>
+            </div>
+          </div>
+        )}
+
         <button
           onClick={handleLogout}
-          className="flex items-center gap-3 w-full px-4 py-3 text-red-600 hover:bg-red-50 rounded-xl font-medium transition-colors text-sm"
+          className="flex items-center gap-3 w-full px-4 py-3 text-red-650 hover:bg-red-50 rounded-xl font-medium transition-colors text-sm"
         >
           <BiLogOut className="text-xl flex-shrink-0" />
           Logout
@@ -79,7 +95,7 @@ const AdminLayout = () => {
     <div className="flex h-screen bg-slate-50 overflow-hidden">
       {/* Desktop Sidebar */}
       <aside className="hidden md:flex flex-col h-screen w-64 bg-white border-r border-slate-200 shadow-sm flex-shrink-0">
-        <SidebarContent />
+        {SidebarContent()}
       </aside>
 
       {/* Mobile Sidebar */}
@@ -111,7 +127,7 @@ const AdminLayout = () => {
               >
                 <BiX className="text-2xl" />
               </button>
-              <SidebarContent />
+              {SidebarContent()}
             </motion.aside>
           </>
         )}
@@ -124,20 +140,12 @@ const AdminLayout = () => {
           <div className="flex items-center gap-3">
             <button
               onClick={() => setSidebarOpen(true)}
-              className="md:hidden p-2 rounded-lg hover:bg-slate-100 text-slate-600 transition-colors"
+              className="md:hidden p-2 rounded-lg hover:bg-slate-100 text-slate-650 transition-colors"
               aria-label="Open sidebar"
             >
               <BiMenu className="text-2xl" />
             </button>
             <h2 className="text-base md:text-xl font-bold text-slate-900">Admin Panel</h2>
-          </div>
-          <div className="flex items-center gap-2 md:gap-3">
-            <div className="w-8 h-8 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center font-bold text-sm flex-shrink-0">
-              {user?.name?.charAt(0)?.toUpperCase() || 'A'}
-            </div>
-            <span className="hidden sm:block font-medium text-slate-700 text-sm truncate max-w-[140px]">
-              {user?.name || 'Admin User'}
-            </span>
           </div>
         </header>
 

@@ -17,15 +17,18 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.examportal.entity.Candidate;
 import com.examportal.entity.EligibleCandidate;
 import com.examportal.entity.NotEligibleCandidate;
+import com.examportal.entity.ShortlistedCandidate;
 import com.examportal.repository.CandidateRepository;
 import com.examportal.repository.EligibleCandidateRepository;
 import com.examportal.repository.NotEligibleCandidateRepository;
+import com.examportal.repository.ShortlistedCandidateRepository;
 
 @Service
 public class ResumeParserServiceImpl implements ResumeParserService {
@@ -37,17 +40,20 @@ public class ResumeParserServiceImpl implements ResumeParserService {
     private final CandidateRepository candidateRepository;
     private final EligibleCandidateRepository eligibleCandidateRepository;
     private final NotEligibleCandidateRepository notEligibleCandidateRepository;
+    private final ShortlistedCandidateRepository shortlistedCandidateRepository;
     private final ObjectMapper objectMapper;
 
     public ResumeParserServiceImpl(WebClient.Builder webClientBuilder, 
                                    CandidateRepository candidateRepository, 
                                    EligibleCandidateRepository eligibleCandidateRepository, 
                                    NotEligibleCandidateRepository notEligibleCandidateRepository, 
+                                   ShortlistedCandidateRepository shortlistedCandidateRepository,
                                    ObjectMapper objectMapper) {
         this.webClient = webClientBuilder.baseUrl("https://generativelanguage.googleapis.com").build();
         this.candidateRepository = candidateRepository;
         this.eligibleCandidateRepository = eligibleCandidateRepository;
         this.notEligibleCandidateRepository = notEligibleCandidateRepository;
+        this.shortlistedCandidateRepository = shortlistedCandidateRepository;
         this.objectMapper = objectMapper;
     }
 
@@ -90,8 +96,6 @@ public class ResumeParserServiceImpl implements ResumeParserService {
             String jsonResult = callGeminiAPI(extractedText, jobDescription);
             JsonNode rootNode = objectMapper.readTree(jsonResult);
             
-            Candidate candidate = new Candidate();
-            
             // Prefer manually entered details over AI parsed ones
             String fullName = manualFullName != null && !manualFullName.isEmpty() ? manualFullName : rootNode.path("full_name").asText(null);
             String email = manualEmail != null && !manualEmail.isEmpty() ? manualEmail : rootNode.path("email").asText(null);
@@ -109,8 +113,25 @@ public class ResumeParserServiceImpl implements ResumeParserService {
                 }
             }
 
-            if (email != null && !email.isEmpty() && candidateRepository.existsByEmail(email)) {
-                throw new IllegalArgumentException("Email is already registered.");
+            Optional<Candidate> existingOpt = Optional.empty();
+            if (email != null && !email.isEmpty()) {
+                existingOpt = candidateRepository.findByEmail(email);
+            }
+
+            String existingId = null;
+            String oldStatus = null;
+            boolean wasShortlisted = false;
+
+            if (existingOpt.isPresent()) {
+                Candidate existingCand = existingOpt.get();
+                existingId = existingCand.getId();
+                oldStatus = existingCand.getCandidateStatus();
+                wasShortlisted = existingCand.isShortlisted();
+            }
+
+            Candidate candidate = new Candidate();
+            if (existingId != null) {
+                candidate.setId(existingId);
             }
 
             candidate.setFullName(fullName);
@@ -164,15 +185,48 @@ public class ResumeParserServiceImpl implements ResumeParserService {
             String status = atsScore >= 80 ? "Eligible" : "Not Eligible";
             candidate.setCandidateStatus(status);
             
+            boolean newShortlisted = false;
+            if (atsScore >= 80) {
+                newShortlisted = wasShortlisted;
+            }
+            candidate.setShortlisted(newShortlisted);
+            
             // Populate dynamic ATS feedback
             populateAtsFeedback(candidate, extractedText);
             
+            // If candidate already exists, clean up from their previous status collections
+            if (existingId != null) {
+                if ("Eligible".equals(oldStatus)) {
+                    try {
+                        eligibleCandidateRepository.deleteById(existingId);
+                    } catch (Exception e) {
+                        // ignore
+                    }
+                } else if ("Not Eligible".equals(oldStatus)) {
+                    try {
+                        notEligibleCandidateRepository.deleteById(existingId);
+                    } catch (Exception e) {
+                        // ignore
+                    }
+                }
+                
+                // If they were shortlisted but are no longer eligible, remove from shortlisted
+                if (wasShortlisted && !"Eligible".equals(status)) {
+                    try {
+                        shortlistedCandidateRepository.deleteById(existingId);
+                    } catch (Exception e) {
+                        // ignore
+                    }
+                }
+            }
+
             // Save main Candidate details
             Candidate savedCandidate = candidateRepository.save(candidate);
             
             // Categorize and copy details into either Eligible or Not Eligible Candidate tables
             if (atsScore >= 80) {
                 EligibleCandidate eligible = EligibleCandidate.builder()
+                        .id(savedCandidate.getId()) // Synchronize ID
                         .fullName(savedCandidate.getFullName())
                         .email(savedCandidate.getEmail())
                         .phoneNumber(savedCandidate.getPhoneNumber())
@@ -191,6 +245,7 @@ public class ResumeParserServiceImpl implements ResumeParserService {
                         .resumeHash(savedCandidate.getResumeHash())
                         .jobDescription(savedCandidate.getJobDescription())
                         .shortlisted(savedCandidate.isShortlisted())
+                        .resumeUploadDate(savedCandidate.getResumeUploadDate())
                         .matchingSkills(savedCandidate.getMatchingSkills())
                         .missingSkills(savedCandidate.getMissingSkills())
                         .strengths(savedCandidate.getStrengths())
@@ -198,8 +253,41 @@ public class ResumeParserServiceImpl implements ResumeParserService {
                         .feedbackReason(savedCandidate.getFeedbackReason())
                         .build();
                 eligibleCandidateRepository.save(eligible);
+
+                // If they were shortlisted and remain eligible, save to shortlisted collection
+                if (savedCandidate.isShortlisted()) {
+                    ShortlistedCandidate shortlisted = ShortlistedCandidate.builder()
+                            .id(savedCandidate.getId()) // Synchronize ID
+                            .fullName(savedCandidate.getFullName())
+                            .email(savedCandidate.getEmail())
+                            .phoneNumber(savedCandidate.getPhoneNumber())
+                            .location(savedCandidate.getLocation())
+                            .linkedinProfile(savedCandidate.getLinkedinProfile())
+                            .professionalSummary(savedCandidate.getProfessionalSummary())
+                            .educationDetails(savedCandidate.getEducationDetails())
+                            .experienceDetails(savedCandidate.getExperienceDetails())
+                            .skills(savedCandidate.getSkills())
+                            .certifications(savedCandidate.getCertifications())
+                            .projects(savedCandidate.getProjects())
+                            .languages(savedCandidate.getLanguages())
+                            .totalYearsExperience(savedCandidate.getTotalYearsExperience())
+                            .atsScore(savedCandidate.getAtsScore())
+                            .candidateStatus(savedCandidate.getCandidateStatus())
+                            .shortlisted(savedCandidate.isShortlisted())
+                            .resumeHash(savedCandidate.getResumeHash())
+                            .jobDescription(savedCandidate.getJobDescription())
+                            .resumeUploadDate(savedCandidate.getResumeUploadDate())
+                            .matchingSkills(savedCandidate.getMatchingSkills())
+                            .missingSkills(savedCandidate.getMissingSkills())
+                            .strengths(savedCandidate.getStrengths())
+                            .improvements(savedCandidate.getImprovements())
+                            .feedbackReason(savedCandidate.getFeedbackReason())
+                            .build();
+                    shortlistedCandidateRepository.save(shortlisted);
+                }
             } else {
                 NotEligibleCandidate notEligible = NotEligibleCandidate.builder()
+                        .id(savedCandidate.getId()) // Synchronize ID
                         .fullName(savedCandidate.getFullName())
                         .email(savedCandidate.getEmail())
                         .phoneNumber(savedCandidate.getPhoneNumber())
@@ -218,6 +306,7 @@ public class ResumeParserServiceImpl implements ResumeParserService {
                         .resumeHash(savedCandidate.getResumeHash())
                         .jobDescription(savedCandidate.getJobDescription())
                         .shortlisted(savedCandidate.isShortlisted())
+                        .resumeUploadDate(savedCandidate.getResumeUploadDate())
                         .matchingSkills(savedCandidate.getMatchingSkills())
                         .missingSkills(savedCandidate.getMissingSkills())
                         .strengths(savedCandidate.getStrengths())

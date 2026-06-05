@@ -1,11 +1,13 @@
 import { useState, useContext } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../../context/AuthContext';
 import api from '../../services/api';
 import { toast } from 'react-toastify';
 import { motion } from 'framer-motion';
-import { BiUser, BiEnvelope, BiPhone, BiLockAlt, BiSave } from 'react-icons/bi';
+import { BiUser, BiEnvelope, BiPhone, BiLockAlt, BiSave, BiArrowBack } from 'react-icons/bi';
 
 const Profile = () => {
+  const navigate = useNavigate();
   const { user, updateUser } = useContext(AuthContext);
   const [formData, setFormData] = useState({
     fullName: user?.name || '',
@@ -57,9 +59,19 @@ const Profile = () => {
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       {/* ── Page Header ── */}
-      <div>
-        <h1 className="text-xl md:text-2xl font-bold text-slate-900 font-syne">Profile Settings</h1>
-        <p className="text-slate-500 text-sm mt-1">Update your personal details and account settings</p>
+      <div className="flex items-center gap-4">
+        <button
+          onClick={() => navigate('/hr/dashboard')}
+          className="p-2.5 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl text-slate-655 hover:text-slate-900 transition-colors shadow-sm cursor-pointer"
+          title="Back to Dashboard"
+          aria-label="Back to Dashboard"
+        >
+          <BiArrowBack className="text-xl" />
+        </button>
+        <div>
+          <h1 className="text-xl md:text-2xl font-bold text-slate-900 font-syne">Profile Settings</h1>
+          <p className="text-slate-500 text-sm mt-0.5">Update your personal details and account settings</p>
+        </div>
       </div>
 
       <motion.div

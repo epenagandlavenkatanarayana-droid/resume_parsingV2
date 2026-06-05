@@ -61,6 +61,24 @@ public class CandidateRepository {
         }
     }
 
+    public Optional<Candidate> findByEmail(String email) {
+        if (email == null) return Optional.empty();
+        try {
+            QuerySnapshot querySnapshot = getCandidatesCollection().whereEqualTo("email", email.toLowerCase().trim()).get().get();
+            if (!querySnapshot.isEmpty()) {
+                DocumentSnapshot doc = querySnapshot.getDocuments().get(0);
+                Candidate candidate = doc.toObject(Candidate.class);
+                if (candidate != null) {
+                    candidate.setId(doc.getId());
+                    return Optional.of(candidate);
+                }
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("Error finding candidate by email in Firestore: " + e.getMessage(), e);
+        }
+        return Optional.empty();
+    }
+
     public Candidate save(Candidate candidate) {
         if (candidate == null) return null;
         try {

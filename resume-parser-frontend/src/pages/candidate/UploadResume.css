@@ -107,7 +107,7 @@
   gap: 60px;
 }
 
-nav {
+.upload-resume-page nav {
   position: fixed; top: 0; left: 0; right: 0; z-index: 100;
   padding: 18px 40px;
   display: flex; align-items: center; justify-content: space-between;
