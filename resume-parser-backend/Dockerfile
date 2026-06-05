@@ -21,5 +21,5 @@ COPY --from=build /app/target/resume-parser-backend-0.0.1-SNAPSHOT.jar app.jar
 # Expose Render's default port
 EXPOSE 10000
 
-# Use ${PORT:-10000} — the dash is required in bash for a proper default value
-ENTRYPOINT ["sh", "-c", "java -Dserver.port=${PORT:-10000} -jar app.jar"]
+# Run the jar directly. Spring Boot will read the PORT env variable automatically.
+ENTRYPOINT ["java", "-jar", "app.jar"]
