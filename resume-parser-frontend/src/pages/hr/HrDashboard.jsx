@@ -17,6 +17,29 @@ const HrDashboard = () => {
   const [activeFilter, setActiveFilter] = useState('all');
   const location = useLocation();
 
+  // Offer Letter Generation States
+  const [isOfferModalOpen, setIsOfferModalOpen] = useState(false);
+  const [offerProfile, setOfferProfile] = useState(null);
+  const [offerForm, setOfferForm] = useState({
+    designation: '',
+    salaryPackage: '',
+    joiningDate: '',
+    companyPolicies: '1. Standard working hours are 9:00 AM to 6:00 PM, Monday through Friday.\n2. Probation period is 3 months from the date of joining.\n3. Annual leave entitlement is 18 paid leaves per calendar year.'
+  });
+
+  const formatDate = (dateStr) => {
+    if (!dateStr) return '';
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+      try {
+        const date = new Date(dateStr);
+        if (!isNaN(date.getTime())) {
+          return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+        }
+      } catch (e) {}
+    }
+    return dateStr;
+  };
+
   useEffect(() => {
     if (location.state && location.state.filter) {
       setActiveFilter(location.state.filter);
@@ -59,6 +82,42 @@ const HrDashboard = () => {
     } catch (error) {
       console.error(error);
       toast.error('Failed to update eligibility status');
+    }
+  };
+
+  const handleUpdateStage = async (id, newStage) => {
+    try {
+      const response = await api.put(`/hr/profiles/${id}/stage`, { stage: newStage });
+      toast.success(response.data.message);
+      fetchProfiles();
+    } catch (error) {
+      console.error(error);
+      toast.error('Failed to update recruitment stage');
+    }
+  };
+
+  const openOfferModal = (profile) => {
+    setOfferProfile(profile);
+    setOfferForm({
+      designation: '',
+      salaryPackage: '',
+      joiningDate: '',
+      companyPolicies: '1. Standard working hours are 9:00 AM to 6:00 PM, Monday through Friday.\n2. Probation period is 3 months from the date of joining.\n3. Annual leave entitlement is 18 paid leaves per calendar year.'
+    });
+    setIsOfferModalOpen(true);
+  };
+
+  const handleSendOfferSubmit = async (e) => {
+    e.preventDefault();
+    if (!offerProfile) return;
+    try {
+      const response = await api.post(`/hr/profiles/${offerProfile.id}/send-offer`, offerForm);
+      toast.success(response.data.message);
+      setIsOfferModalOpen(false);
+      fetchProfiles();
+    } catch (error) {
+      console.error(error);
+      toast.error('Failed to send offer letter');
     }
   };
 
@@ -288,7 +347,131 @@ const HrDashboard = () => {
                     transition={{ duration: 0.25 }}
                     className="overflow-hidden"
                   >
-                    <div className="border-t border-slate-100 bg-slate-50 p-4 md:p-5 grid grid-cols-1 lg:grid-cols-2 gap-5">
+                    <div className="border-t border-slate-100 bg-slate-50 p-4 md:p-5">
+                      {profile.shortlisted && (
+                        <div className="border-b border-slate-200 pb-5 mb-5">
+                          <h4 className="font-bold text-slate-700 text-sm flex items-center gap-2 mb-4">
+                            <BiStar className="text-amber-500" /> Recruitment Pipeline Progress
+                          </h4>
+                          
+                          {/* Stepper */}
+                          <div className="relative flex flex-col md:flex-row items-start md:items-center justify-between gap-4 md:gap-2 bg-white border border-slate-200 rounded-xl p-5 shadow-sm mb-4">
+                            {[
+                              { label: 'Applied', key: 'APPLICATION_SUBMITTED' },
+                              { label: 'Shortlisted', key: 'SHORTLISTED' },
+                              { label: 'HR Approved', key: 'HR_APPROVED' },
+                              { label: 'BGV Initiated', key: 'BGV_INITIATED' },
+                              { label: 'BGV Cleared', key: 'BGV_CLEARED' },
+                              { label: 'Offer Sent', key: 'OFFER_SENT' },
+                              { label: 'Hired', key: 'HIRED' }
+                            ].map((step, idx) => {
+                              const stagesOrder = ['APPLICATION_SUBMITTED', 'SHORTLISTED', 'HR_APPROVED', 'BGV_INITIATED', 'BGV_CLEARED', 'OFFER_SENT', 'HIRED'];
+                              const currentStage = profile.recruitmentStage || 'APPLICATION_SUBMITTED';
+                              
+                              let currentIdx = stagesOrder.indexOf(currentStage);
+                              if (currentIdx === -1) {
+                                currentIdx = 0;
+                              }
+                              
+                              const isCompleted = idx < currentIdx;
+                              const isActive = idx === currentIdx;
+                              
+                              return (
+                                <div key={step.key} className="flex md:flex-col items-center flex-1 w-full relative">
+                                  {idx < 6 && (
+                                    <div className="hidden md:block absolute left-1/2 right-[-50%] top-3.5 h-0.5 bg-slate-200 z-0">
+                                      <div 
+                                        className="h-full bg-blue-600 transition-all duration-300" 
+                                        style={{ width: idx < currentIdx ? '100%' : '0%' }}
+                                      />
+                                    </div>
+                                  )}
+                                  <div className="flex items-center gap-3 md:flex-col md:gap-1.5 z-10">
+                                    <div className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs transition-all duration-300 ${
+                                      isCompleted
+                                        ? 'bg-blue-600 text-white shadow-sm'
+                                        : isActive
+                                        ? 'bg-blue-600 text-white ring-4 ring-blue-100'
+                                        : 'bg-slate-100 text-slate-400 border border-slate-200'
+                                    }`}>
+                                      {isCompleted ? <BiCheck className="text-sm" /> : idx + 1}
+                                    </div>
+                                    <span className={`text-[11px] font-bold ${
+                                      isActive ? 'text-blue-600' : isCompleted ? 'text-slate-800' : 'text-slate-400'
+                                    }`}>
+                                      {step.label}
+                                    </span>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                          
+                          {/* Control actions */}
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+                            <div className="text-xs text-slate-600">
+                              <span className="font-semibold text-slate-700">Pipeline Status:</span>{' '}
+                              <span className="capitalize font-semibold text-blue-600">
+                                {(profile.recruitmentStage || 'APPLICATION_SUBMITTED').replace('_', ' ').toLowerCase()}
+                              </span>
+                              {profile.designation && (
+                                <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-slate-500 font-medium">
+                                  <span>Role: <strong className="text-slate-700">{profile.designation}</strong></span>
+                                  <span>Salary: <strong className="text-slate-700">{profile.salaryPackage}</strong></span>
+                                  <span>Joining: <strong className="text-slate-700">{formatDate(profile.joiningDate)}</strong></span>
+                                </div>
+                              )}
+                            </div>
+                            
+                            <div className="flex items-center gap-2">
+                              {profile.recruitmentStage === 'SHORTLISTED' && (
+                                <button
+                                  onClick={() => handleUpdateStage(profile.id, 'HR_APPROVED')}
+                                  className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg text-xs shadow-sm transition-all active:scale-[0.98]"
+                                >
+                                  Approve Candidate
+                                </button>
+                              )}
+                              {profile.recruitmentStage === 'HR_APPROVED' && (
+                                <button
+                                  onClick={() => handleUpdateStage(profile.id, 'BGV_INITIATED')}
+                                  className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg text-xs shadow-sm transition-all active:scale-[0.98]"
+                                >
+                                  Initiate BGV
+                                </button>
+                              )}
+                              {profile.recruitmentStage === 'BGV_INITIATED' && (
+                                <button
+                                  onClick={() => handleUpdateStage(profile.id, 'BGV_CLEARED')}
+                                  className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg text-xs shadow-sm transition-all active:scale-[0.98]"
+                                >
+                                  Mark BGV Cleared
+                                </button>
+                              )}
+                              {profile.recruitmentStage === 'BGV_CLEARED' && (
+                                <button
+                                  onClick={() => openOfferModal(profile)}
+                                  className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg text-xs shadow-sm transition-all active:scale-[0.98]"
+                                >
+                                  Send Offer Letter
+                                </button>
+                              )}
+                              {profile.recruitmentStage === 'OFFER_SENT' && (
+                                <span className="px-3 py-1.5 bg-amber-50 border border-amber-200 text-amber-700 font-semibold rounded-lg text-xs">
+                                  Awaiting Candidate Acceptance
+                                </span>
+                              )}
+                              {profile.recruitmentStage === 'HIRED' && (
+                                <span className="px-3 py-1.5 bg-emerald-50 border border-emerald-200 text-emerald-700 font-semibold rounded-lg text-xs flex items-center gap-1">
+                                  <BiCheck className="text-sm font-black" /> Hired & Onboarding
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
 
                       {/* Left — Experience & Education */}
                       <div className="space-y-4">
@@ -434,7 +617,8 @@ const HrDashboard = () => {
                         )}
                       </div>
                     </div>
-                  </motion.div>
+                  </div>
+                </motion.div>
                 )}
               </AnimatePresence>
             </motion.div>
@@ -449,6 +633,93 @@ const HrDashboard = () => {
           </div>
         )}
       </div>
+
+      {/* ── Send Offer Letter Modal ── */}
+      {isOfferModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full overflow-hidden border border-slate-100 animate-in fade-in zoom-in duration-200">
+            <div className="flex items-center justify-between px-6 py-4 bg-slate-50 border-b border-slate-150">
+              <h3 className="font-bold text-slate-800 text-base">Generate Official Offer Letter</h3>
+              <button
+                onClick={() => setIsOfferModalOpen(false)}
+                className="text-slate-400 hover:text-slate-650 p-1 rounded-lg hover:bg-slate-100 transition-colors"
+              >
+                <BiX className="text-xl" />
+              </button>
+            </div>
+            
+            <form onSubmit={handleSendOfferSubmit} className="p-6 space-y-4 text-left">
+              <div className="text-xs text-slate-500 mb-2">
+                Sending employment offer to <strong className="text-slate-700 capitalize">{offerProfile?.fullName}</strong> ({offerProfile?.email})
+              </div>
+              
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Designation</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Software Engineer"
+                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-blue-500 text-slate-800"
+                  value={offerForm.designation}
+                  onChange={(e) => setOfferForm({ ...offerForm, designation: e.target.value })}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Salary Package</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. 12 LPA"
+                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-blue-500 text-slate-800"
+                    value={offerForm.salaryPackage}
+                    onChange={(e) => setOfferForm({ ...offerForm, salaryPackage: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Joining Date</label>
+                  <input
+                    type="date"
+                    required
+                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-blue-500 text-slate-800"
+                    value={offerForm.joiningDate}
+                    onChange={(e) => setOfferForm({ ...offerForm, joiningDate: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Company Policies</label>
+                <textarea
+                  rows="4"
+                  required
+                  placeholder="Employment policies..."
+                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-blue-500 text-slate-800 font-sans"
+                  value={offerForm.companyPolicies}
+                  onChange={(e) => setOfferForm({ ...offerForm, companyPolicies: e.target.value })}
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-3 border-t border-slate-150">
+                <button
+                  type="button"
+                  onClick={() => setIsOfferModalOpen(false)}
+                  className="px-4 py-2 border border-slate-200 hover:bg-slate-50 text-slate-600 font-semibold rounded-lg text-xs transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg text-xs shadow-sm transition-colors"
+                >
+                  Send Offer Letter
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

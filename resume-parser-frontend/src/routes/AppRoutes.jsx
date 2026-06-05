@@ -12,6 +12,7 @@ import Profile from '../pages/hr/Profile';
 
 // Candidate Pages
 import UploadResume from '../pages/candidate/UploadResume';
+import OfferStatus from '../pages/candidate/OfferStatus';
 
 const AppRoutes = () => {
   return (
@@ -20,6 +21,7 @@ const AppRoutes = () => {
       <Route path="/" element={<Navigate to="/upload-resume" replace />} />
       <Route path="/login" element={<Login />} />
       <Route path="/upload-resume" element={<UploadResume />} />
+      <Route path="/offer-status" element={<OfferStatus />} />
 
       {/* HR Routes */}
       <Route 

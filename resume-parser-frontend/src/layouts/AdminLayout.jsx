@@ -1,10 +1,11 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
-import { BiLogOut, BiUser, BiBriefcase, BiMenu, BiX } from 'react-icons/bi';
+import { BiLogOut, BiUser, BiBriefcase, BiMenu, BiX, BiBell, BiCalendar } from 'react-icons/bi';
 import { AuthContext } from '../context/AuthContext';
 import api from '../services/api';
 import { toast } from 'react-toastify';
 import { useState, useContext } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import ThemeToggle from '../components/ThemeToggle';
 
 const AdminLayout = () => {
   const { user, logout } = useContext(AuthContext);
@@ -146,6 +147,29 @@ const AdminLayout = () => {
               <BiMenu className="text-2xl" />
             </button>
             <h2 className="text-base md:text-xl font-bold text-slate-900">Admin Panel</h2>
+          </div>
+
+          <div className="flex items-center gap-3">
+            {/* Date Badge */}
+            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-100 text-slate-600 text-xs font-semibold">
+              <BiCalendar className="text-sm text-slate-500" />
+              <span>
+                {new Date().toLocaleDateString('en-US', {
+                  weekday: 'short',
+                  month: 'short',
+                  day: 'numeric',
+                })}
+              </span>
+            </div>
+
+            {/* Notification Bell */}
+            <button className="relative p-2 rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-800 transition-all duration-200 shadow-sm" aria-label="Notifications">
+              <BiBell className="text-xl" />
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white" />
+            </button>
+
+            {/* Theme Toggle */}
+            <ThemeToggle />
           </div>
         </header>
 

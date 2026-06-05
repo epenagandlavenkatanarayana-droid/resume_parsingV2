@@ -2,14 +2,14 @@ import { useEffect, useState } from 'react';
 import { BiSun, BiMoon } from 'react-icons/bi';
 
 /**
- * ThemeToggle – a simple dark/light mode switch.
+ * ThemeToggle – a simple, reusable dark/light mode switch.
  * It toggles a "dark" or "light" class on the <html> element and persists the choice.
  */
-const ThemeToggle = () => {
-  // Initialize from localStorage, default to dark mode for premium look
+const ThemeToggle = ({ className = "" }) => {
+  // Initialize from localStorage, default to light mode (false) to match main panels
   const [dark, setDark] = useState(() => {
     const stored = typeof window !== 'undefined' ? localStorage.getItem('theme') : null;
-    return stored ? stored === 'dark' : true;
+    return stored ? stored === 'dark' : false;
   });
 
   useEffect(() => {
@@ -21,17 +21,16 @@ const ThemeToggle = () => {
       root.classList.remove('dark');
       root.classList.add('light');
     }
-    // Persist user preference
     localStorage.setItem('theme', dark ? 'dark' : 'light');
   }, [dark]);
 
   return (
     <button
       onClick={() => setDark(!dark)}
-      className="fixed top-4 right-4 z-50 flex items-center gap-1 p-2 bg-white/10 rounded-full text-white hover:bg-white/20 transition"
+      className={`p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:text-slate-850 dark:hover:text-slate-200 transition-all duration-200 shadow-sm flex items-center justify-center ${className}`}
       aria-label="Toggle dark/light mode"
     >
-      {dark ? <BiMoon size={20} /> : <BiSun size={20} />}
+      {dark ? <BiSun className="text-xl" /> : <BiMoon className="text-xl" />}
     </button>
   );
 };

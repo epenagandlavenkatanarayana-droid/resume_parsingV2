@@ -23,6 +23,11 @@ public class CandidateResponse {
     private Integer atsScore;
     private String candidateStatus;
     private boolean shortlisted;
+    private String recruitmentStage;
+    private String designation;
+    private String salaryPackage;
+    private String joiningDate;
+    private String companyPolicies;
 
     // ATS feedback details
     private List<String> matchingSkills;

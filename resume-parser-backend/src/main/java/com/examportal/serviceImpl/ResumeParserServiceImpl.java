@@ -121,9 +121,10 @@ public class ResumeParserServiceImpl implements ResumeParserService {
             String existingId = null;
             String oldStatus = null;
             boolean wasShortlisted = false;
+            Candidate existingCand = null;
 
             if (existingOpt.isPresent()) {
-                Candidate existingCand = existingOpt.get();
+                existingCand = existingOpt.get();
                 existingId = existingCand.getId();
                 oldStatus = existingCand.getCandidateStatus();
                 wasShortlisted = existingCand.isShortlisted();
@@ -185,11 +186,26 @@ public class ResumeParserServiceImpl implements ResumeParserService {
             String status = atsScore >= 80 ? "Eligible" : "Not Eligible";
             candidate.setCandidateStatus(status);
             
+            // Set stage
+            String initialStage = atsScore >= 80 ? "RESUME_SCREENING" : "APPLICATION_SUBMITTED";
+            candidate.setRecruitmentStage(existingCand != null ? existingCand.getRecruitmentStage() : initialStage);
+            if (atsScore < 80) {
+                candidate.setRecruitmentStage("APPLICATION_SUBMITTED");
+            }
+            
             boolean newShortlisted = false;
             if (atsScore >= 80) {
                 newShortlisted = wasShortlisted;
             }
             candidate.setShortlisted(newShortlisted);
+
+            // Preserve offer details if they existed
+            if (existingCand != null) {
+                candidate.setDesignation(existingCand.getDesignation());
+                candidate.setSalaryPackage(existingCand.getSalaryPackage());
+                candidate.setJoiningDate(existingCand.getJoiningDate());
+                candidate.setCompanyPolicies(existingCand.getCompanyPolicies());
+            }
             
             // Populate dynamic ATS feedback
             populateAtsFeedback(candidate, extractedText);
@@ -246,6 +262,11 @@ public class ResumeParserServiceImpl implements ResumeParserService {
                         .jobDescription(savedCandidate.getJobDescription())
                         .shortlisted(savedCandidate.isShortlisted())
                         .resumeUploadDate(savedCandidate.getResumeUploadDate())
+                        .recruitmentStage(savedCandidate.getRecruitmentStage())
+                        .designation(savedCandidate.getDesignation())
+                        .salaryPackage(savedCandidate.getSalaryPackage())
+                        .joiningDate(savedCandidate.getJoiningDate())
+                        .companyPolicies(savedCandidate.getCompanyPolicies())
                         .matchingSkills(savedCandidate.getMatchingSkills())
                         .missingSkills(savedCandidate.getMissingSkills())
                         .strengths(savedCandidate.getStrengths())
@@ -277,6 +298,11 @@ public class ResumeParserServiceImpl implements ResumeParserService {
                             .resumeHash(savedCandidate.getResumeHash())
                             .jobDescription(savedCandidate.getJobDescription())
                             .resumeUploadDate(savedCandidate.getResumeUploadDate())
+                            .recruitmentStage(savedCandidate.getRecruitmentStage())
+                            .designation(savedCandidate.getDesignation())
+                            .salaryPackage(savedCandidate.getSalaryPackage())
+                            .joiningDate(savedCandidate.getJoiningDate())
+                            .companyPolicies(savedCandidate.getCompanyPolicies())
                             .matchingSkills(savedCandidate.getMatchingSkills())
                             .missingSkills(savedCandidate.getMissingSkills())
                             .strengths(savedCandidate.getStrengths())
@@ -307,6 +333,11 @@ public class ResumeParserServiceImpl implements ResumeParserService {
                         .jobDescription(savedCandidate.getJobDescription())
                         .shortlisted(savedCandidate.isShortlisted())
                         .resumeUploadDate(savedCandidate.getResumeUploadDate())
+                        .recruitmentStage(savedCandidate.getRecruitmentStage())
+                        .designation(savedCandidate.getDesignation())
+                        .salaryPackage(savedCandidate.getSalaryPackage())
+                        .joiningDate(savedCandidate.getJoiningDate())
+                        .companyPolicies(savedCandidate.getCompanyPolicies())
                         .matchingSkills(savedCandidate.getMatchingSkills())
                         .missingSkills(savedCandidate.getMissingSkills())
                         .strengths(savedCandidate.getStrengths())

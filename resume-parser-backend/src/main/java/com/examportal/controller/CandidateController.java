@@ -29,6 +29,18 @@ public class CandidateController {
     @Autowired
     private com.fasterxml.jackson.databind.ObjectMapper objectMapper;
 
+    @Autowired
+    private com.examportal.repository.CandidateRepository candidateRepository;
+
+    @Autowired
+    private com.examportal.repository.EligibleCandidateRepository eligibleCandidateRepository;
+
+    @Autowired
+    private com.examportal.repository.NotEligibleCandidateRepository notEligibleCandidateRepository;
+
+    @Autowired
+    private com.examportal.repository.ShortlistedCandidateRepository shortlistedCandidateRepository;
+
     @PostMapping("/upload-resume")
     public ResponseEntity<Map<String, Object>> uploadResume(
             @RequestParam("file") MultipartFile file,
@@ -101,5 +113,169 @@ public class CandidateController {
             log.error("Error parsing resume: {}", e.getMessage(), e);
             return new ResponseEntity<>("{\"error\": \"" + e.getMessage() + "\"}", HttpStatus.INTERNAL_SERVER_ERROR);
         }
+    }
+
+    private void syncCandidateAcrossCollections(Candidate candidate) {
+        candidateRepository.save(candidate);
+
+        if ("Eligible".equals(candidate.getCandidateStatus())) {
+            com.examportal.entity.EligibleCandidate eligible = com.examportal.entity.EligibleCandidate.builder()
+                    .id(candidate.getId())
+                    .fullName(candidate.getFullName())
+                    .email(candidate.getEmail())
+                    .phoneNumber(candidate.getPhoneNumber())
+                    .location(candidate.getLocation())
+                    .linkedinProfile(candidate.getLinkedinProfile())
+                    .professionalSummary(candidate.getProfessionalSummary())
+                    .educationDetails(candidate.getEducationDetails())
+                    .experienceDetails(candidate.getExperienceDetails())
+                    .skills(candidate.getSkills())
+                    .certifications(candidate.getCertifications())
+                    .projects(candidate.getProjects())
+                    .languages(candidate.getLanguages())
+                    .totalYearsExperience(candidate.getTotalYearsExperience())
+                    .atsScore(candidate.getAtsScore())
+                    .candidateStatus(candidate.getCandidateStatus())
+                    .shortlisted(candidate.isShortlisted())
+                    .resumeHash(candidate.getResumeHash())
+                    .jobDescription(candidate.getJobDescription())
+                    .resumeUploadDate(candidate.getResumeUploadDate())
+                    .matchingSkills(candidate.getMatchingSkills())
+                    .missingSkills(candidate.getMissingSkills())
+                    .strengths(candidate.getStrengths())
+                    .improvements(candidate.getImprovements())
+                    .feedbackReason(candidate.getFeedbackReason())
+                    .recruitmentStage(candidate.getRecruitmentStage())
+                    .designation(candidate.getDesignation())
+                    .salaryPackage(candidate.getSalaryPackage())
+                    .joiningDate(candidate.getJoiningDate())
+                    .companyPolicies(candidate.getCompanyPolicies())
+                    .build();
+            eligibleCandidateRepository.save(eligible);
+
+            try {
+                notEligibleCandidateRepository.deleteById(candidate.getId());
+            } catch (Exception e) {}
+        } else {
+            com.examportal.entity.NotEligibleCandidate notEligible = com.examportal.entity.NotEligibleCandidate.builder()
+                    .id(candidate.getId())
+                    .fullName(candidate.getFullName())
+                    .email(candidate.getEmail())
+                    .phoneNumber(candidate.getPhoneNumber())
+                    .location(candidate.getLocation())
+                    .linkedinProfile(candidate.getLinkedinProfile())
+                    .professionalSummary(candidate.getProfessionalSummary())
+                    .educationDetails(candidate.getEducationDetails())
+                    .experienceDetails(candidate.getExperienceDetails())
+                    .skills(candidate.getSkills())
+                    .certifications(candidate.getCertifications())
+                    .projects(candidate.getProjects())
+                    .languages(candidate.getLanguages())
+                    .totalYearsExperience(candidate.getTotalYearsExperience())
+                    .atsScore(candidate.getAtsScore())
+                    .candidateStatus(candidate.getCandidateStatus())
+                    .shortlisted(candidate.isShortlisted())
+                    .resumeHash(candidate.getResumeHash())
+                    .jobDescription(candidate.getJobDescription())
+                    .resumeUploadDate(candidate.getResumeUploadDate())
+                    .matchingSkills(candidate.getMatchingSkills())
+                    .missingSkills(candidate.getMissingSkills())
+                    .strengths(candidate.getStrengths())
+                    .improvements(candidate.getImprovements())
+                    .feedbackReason(candidate.getFeedbackReason())
+                    .recruitmentStage(candidate.getRecruitmentStage())
+                    .designation(candidate.getDesignation())
+                    .salaryPackage(candidate.getSalaryPackage())
+                    .joiningDate(candidate.getJoiningDate())
+                    .companyPolicies(candidate.getCompanyPolicies())
+                    .build();
+            notEligibleCandidateRepository.save(notEligible);
+
+            try {
+                eligibleCandidateRepository.deleteById(candidate.getId());
+            } catch (Exception e) {}
+        }
+
+        if (candidate.isShortlisted()) {
+            com.examportal.entity.ShortlistedCandidate shortlisted = com.examportal.entity.ShortlistedCandidate.builder()
+                    .id(candidate.getId())
+                    .fullName(candidate.getFullName())
+                    .email(candidate.getEmail())
+                    .phoneNumber(candidate.getPhoneNumber())
+                    .location(candidate.getLocation())
+                    .linkedinProfile(candidate.getLinkedinProfile())
+                    .professionalSummary(candidate.getProfessionalSummary())
+                    .educationDetails(candidate.getEducationDetails())
+                    .experienceDetails(candidate.getExperienceDetails())
+                    .skills(candidate.getSkills())
+                    .certifications(candidate.getCertifications())
+                    .projects(candidate.getProjects())
+                    .languages(candidate.getLanguages())
+                    .totalYearsExperience(candidate.getTotalYearsExperience())
+                    .atsScore(candidate.getAtsScore())
+                    .candidateStatus(candidate.getCandidateStatus())
+                    .shortlisted(candidate.isShortlisted())
+                    .resumeHash(candidate.getResumeHash())
+                    .jobDescription(candidate.getJobDescription())
+                    .resumeUploadDate(candidate.getResumeUploadDate())
+                    .matchingSkills(candidate.getMatchingSkills())
+                    .missingSkills(candidate.getMissingSkills())
+                    .strengths(candidate.getStrengths())
+                    .improvements(candidate.getImprovements())
+                    .feedbackReason(candidate.getFeedbackReason())
+                    .recruitmentStage(candidate.getRecruitmentStage())
+                    .designation(candidate.getDesignation())
+                    .salaryPackage(candidate.getSalaryPackage())
+                    .joiningDate(candidate.getJoiningDate())
+                    .companyPolicies(candidate.getCompanyPolicies())
+                    .build();
+            shortlistedCandidateRepository.save(shortlisted);
+        } else {
+            try {
+                shortlistedCandidateRepository.deleteById(candidate.getId());
+            } catch (Exception e) {}
+        }
+    }
+
+    @GetMapping("/offer-status")
+    public ResponseEntity<?> getOfferStatus(@RequestParam("email") String email) {
+        if (email == null || email.trim().isEmpty()) {
+            return new ResponseEntity<>(Map.of("message", "Email is required", "success", false), HttpStatus.BAD_REQUEST);
+        }
+        java.util.Optional<Candidate> optionalCandidate = candidateRepository.findByEmail(email);
+        if (optionalCandidate.isEmpty()) {
+            return new ResponseEntity<>(Map.of("message", "Candidate not found", "success", false), HttpStatus.NOT_FOUND);
+        }
+        Candidate c = optionalCandidate.get();
+        Map<String, Object> response = new HashMap<>();
+        response.put("id", c.getId());
+        response.put("fullName", c.getFullName());
+        response.put("email", c.getEmail());
+        response.put("phoneNumber", c.getPhoneNumber());
+        response.put("recruitmentStage", c.getRecruitmentStage());
+        response.put("designation", c.getDesignation());
+        response.put("salaryPackage", c.getSalaryPackage());
+        response.put("joiningDate", c.getJoiningDate());
+        response.put("companyPolicies", c.getCompanyPolicies());
+        response.put("atsScore", c.getAtsScore());
+        response.put("candidateStatus", c.getCandidateStatus());
+        response.put("shortlisted", c.isShortlisted());
+        return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+
+    @PutMapping("/offer-status/accept")
+    public ResponseEntity<?> acceptOffer(@RequestParam("email") String email) {
+        if (email == null || email.trim().isEmpty()) {
+            return new ResponseEntity<>(Map.of("message", "Email is required", "success", false), HttpStatus.BAD_REQUEST);
+        }
+        java.util.Optional<Candidate> optionalCandidate = candidateRepository.findByEmail(email);
+        if (optionalCandidate.isEmpty()) {
+            return new ResponseEntity<>(Map.of("message", "Candidate not found", "success", false), HttpStatus.NOT_FOUND);
+        }
+        Candidate candidate = optionalCandidate.get();
+        candidate.setRecruitmentStage("HIRED");
+        syncCandidateAcrossCollections(candidate);
+        
+        return new ResponseEntity<>(Map.of("message", "Offer accepted successfully!", "success", true), HttpStatus.OK);
     }
 }

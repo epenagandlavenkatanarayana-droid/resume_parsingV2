@@ -19,6 +19,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.MimeMessageHelper;
+import jakarta.mail.internet.MimeMessage;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -50,6 +53,9 @@ public class HrController {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired(required = false)
+    private JavaMailSender mailSender;
+
     @GetMapping("/profiles")
     public ResponseEntity<List<CandidateResponse>> getAllProfiles() {
         List<Candidate> candidates = candidateRepository.findAll();
@@ -68,6 +74,11 @@ public class HrController {
             res.setAtsScore(c.getAtsScore());
             res.setCandidateStatus(c.getCandidateStatus());
             res.setShortlisted(c.isShortlisted());
+            res.setRecruitmentStage(c.getRecruitmentStage());
+            res.setDesignation(c.getDesignation());
+            res.setSalaryPackage(c.getSalaryPackage());
+            res.setJoiningDate(c.getJoiningDate());
+            res.setCompanyPolicies(c.getCompanyPolicies());
             
             // Map Matching Skills
             try {
@@ -240,200 +251,12 @@ public class HrController {
         return new ResponseEntity<>(responseList, HttpStatus.OK);
     }
 
-    @PutMapping("/profiles/{id}/shortlist")
-    public ResponseEntity<ApiResponse> toggleShortlist(@PathVariable String id) {
-        Candidate candidate = candidateRepository.findById(id).orElse(null);
-        if (candidate == null) {
-            return new ResponseEntity<>(new ApiResponse("Candidate not found", false), HttpStatus.NOT_FOUND);
-        }
-        
-        boolean newShortlistState = !candidate.isShortlisted();
-        candidate.setShortlisted(newShortlistState);
-        
-        if (newShortlistState) {
-            // Toggling Shortlisted = True
-            // If they are not eligible, update status to "Eligible"
-            if (!"Eligible".equals(candidate.getCandidateStatus())) {
-                candidate.setCandidateStatus("Eligible");
-            }
-            
-            // Save updated main candidate details
-            candidateRepository.save(candidate);
-            
-            // Save to eligible collection
-            EligibleCandidate eligible = EligibleCandidate.builder()
-                    .id(candidate.getId())
-                    .fullName(candidate.getFullName())
-                    .email(candidate.getEmail())
-                    .phoneNumber(candidate.getPhoneNumber())
-                    .location(candidate.getLocation())
-                    .linkedinProfile(candidate.getLinkedinProfile())
-                    .professionalSummary(candidate.getProfessionalSummary())
-                    .educationDetails(candidate.getEducationDetails())
-                    .experienceDetails(candidate.getExperienceDetails())
-                    .skills(candidate.getSkills())
-                    .certifications(candidate.getCertifications())
-                    .projects(candidate.getProjects())
-                    .languages(candidate.getLanguages())
-                    .totalYearsExperience(candidate.getTotalYearsExperience())
-                    .atsScore(candidate.getAtsScore())
-                    .candidateStatus(candidate.getCandidateStatus())
-                    .shortlisted(candidate.isShortlisted())
-                    .resumeHash(candidate.getResumeHash())
-                    .jobDescription(candidate.getJobDescription())
-                    .resumeUploadDate(candidate.getResumeUploadDate())
-                    .matchingSkills(candidate.getMatchingSkills())
-                    .missingSkills(candidate.getMissingSkills())
-                    .strengths(candidate.getStrengths())
-                    .improvements(candidate.getImprovements())
-                    .feedbackReason(candidate.getFeedbackReason())
-                    .build();
-            eligibleCandidateRepository.save(eligible);
-            
-            // Delete from not eligible collection
-            try {
-                notEligibleCandidateRepository.deleteById(id);
-            } catch (Exception e) {
-                // Ignore if not present
-            }
-            
-            // Save to shortlisted candidates collection
-            ShortlistedCandidate shortlisted = ShortlistedCandidate.builder()
-                    .id(candidate.getId())
-                    .fullName(candidate.getFullName())
-                    .email(candidate.getEmail())
-                    .phoneNumber(candidate.getPhoneNumber())
-                    .location(candidate.getLocation())
-                    .linkedinProfile(candidate.getLinkedinProfile())
-                    .professionalSummary(candidate.getProfessionalSummary())
-                    .educationDetails(candidate.getEducationDetails())
-                    .experienceDetails(candidate.getExperienceDetails())
-                    .skills(candidate.getSkills())
-                    .certifications(candidate.getCertifications())
-                    .projects(candidate.getProjects())
-                    .languages(candidate.getLanguages())
-                    .totalYearsExperience(candidate.getTotalYearsExperience())
-                    .atsScore(candidate.getAtsScore())
-                    .candidateStatus(candidate.getCandidateStatus())
-                    .shortlisted(candidate.isShortlisted())
-                    .resumeHash(candidate.getResumeHash())
-                    .jobDescription(candidate.getJobDescription())
-                    .resumeUploadDate(candidate.getResumeUploadDate())
-                    .matchingSkills(candidate.getMatchingSkills())
-                    .missingSkills(candidate.getMissingSkills())
-                    .strengths(candidate.getStrengths())
-                    .improvements(candidate.getImprovements())
-                    .feedbackReason(candidate.getFeedbackReason())
-                    .build();
-            shortlistedCandidateRepository.save(shortlisted);
-            
-        } else {
-            // Toggling Shortlisted = False
-            // Delete from shortlisted candidates collection
-            try {
-                shortlistedCandidateRepository.deleteById(id);
-            } catch (Exception e) {
-                // Ignore if not present
-            }
-            
-            // Revert candidate status based on original ATS score
-            if (candidate.getAtsScore() != null && candidate.getAtsScore() >= 80) {
-                candidate.setCandidateStatus("Eligible");
-                candidateRepository.save(candidate);
-                
-                // Add back to eligible candidates collection
-                EligibleCandidate eligible = EligibleCandidate.builder()
-                        .id(candidate.getId())
-                        .fullName(candidate.getFullName())
-                        .email(candidate.getEmail())
-                        .phoneNumber(candidate.getPhoneNumber())
-                        .location(candidate.getLocation())
-                        .linkedinProfile(candidate.getLinkedinProfile())
-                        .professionalSummary(candidate.getProfessionalSummary())
-                        .educationDetails(candidate.getEducationDetails())
-                        .experienceDetails(candidate.getExperienceDetails())
-                        .skills(candidate.getSkills())
-                        .certifications(candidate.getCertifications())
-                        .projects(candidate.getProjects())
-                        .languages(candidate.getLanguages())
-                        .totalYearsExperience(candidate.getTotalYearsExperience())
-                        .atsScore(candidate.getAtsScore())
-                        .candidateStatus(candidate.getCandidateStatus())
-                        .shortlisted(candidate.isShortlisted())
-                        .resumeHash(candidate.getResumeHash())
-                        .jobDescription(candidate.getJobDescription())
-                        .resumeUploadDate(candidate.getResumeUploadDate())
-                        .matchingSkills(candidate.getMatchingSkills())
-                        .missingSkills(candidate.getMissingSkills())
-                        .strengths(candidate.getStrengths())
-                        .improvements(candidate.getImprovements())
-                        .feedbackReason(candidate.getFeedbackReason())
-                        .build();
-                eligibleCandidateRepository.save(eligible);
-            } else {
-                candidate.setCandidateStatus("Not Eligible");
-                candidateRepository.save(candidate);
-                
-                // Remove from eligible candidates collection if they exist there
-                try {
-                    eligibleCandidateRepository.deleteById(id);
-                } catch (Exception e) {}
-                
-                // Add back to not eligible candidates collection
-                NotEligibleCandidate notEligible = NotEligibleCandidate.builder()
-                        .id(candidate.getId())
-                        .fullName(candidate.getFullName())
-                        .email(candidate.getEmail())
-                        .phoneNumber(candidate.getPhoneNumber())
-                        .location(candidate.getLocation())
-                        .linkedinProfile(candidate.getLinkedinProfile())
-                        .professionalSummary(candidate.getProfessionalSummary())
-                        .educationDetails(candidate.getEducationDetails())
-                        .experienceDetails(candidate.getExperienceDetails())
-                        .skills(candidate.getSkills())
-                        .certifications(candidate.getCertifications())
-                        .projects(candidate.getProjects())
-                        .languages(candidate.getLanguages())
-                        .totalYearsExperience(candidate.getTotalYearsExperience())
-                        .atsScore(candidate.getAtsScore())
-                        .candidateStatus(candidate.getCandidateStatus())
-                        .shortlisted(candidate.isShortlisted())
-                        .resumeHash(candidate.getResumeHash())
-                        .jobDescription(candidate.getJobDescription())
-                        .resumeUploadDate(candidate.getResumeUploadDate())
-                        .matchingSkills(candidate.getMatchingSkills())
-                        .missingSkills(candidate.getMissingSkills())
-                        .strengths(candidate.getStrengths())
-                        .improvements(candidate.getImprovements())
-                        .feedbackReason(candidate.getFeedbackReason())
-                        .build();
-                notEligibleCandidateRepository.save(notEligible);
-            }
-        }
-        
-        String status = candidate.isShortlisted() ? "shortlisted" : "removed from shortlist";
-        return new ResponseEntity<>(new ApiResponse("Candidate " + status, true), HttpStatus.OK);
-    }
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(HrController.class);
 
-    @PutMapping("/profiles/{id}/eligible")
-    public ResponseEntity<ApiResponse> toggleEligibility(@PathVariable String id) {
-        Candidate candidate = candidateRepository.findById(id).orElse(null);
-        if (candidate == null) {
-            return new ResponseEntity<>(new ApiResponse("Candidate not found", false), HttpStatus.NOT_FOUND);
-        }
-        
-        boolean newEligibility = !"Eligible".equals(candidate.getCandidateStatus());
-        
-        if (newEligibility) {
-            candidate.setCandidateStatus("Eligible");
-            candidateRepository.save(candidate);
-            
-            // Delete from not eligible collection
-            try {
-                notEligibleCandidateRepository.deleteById(id);
-            } catch (Exception e) {}
-            
-            // Save to eligible collection
+    private void syncCandidateAcrossCollections(Candidate candidate) {
+        candidateRepository.save(candidate);
+
+        if ("Eligible".equals(candidate.getCandidateStatus())) {
             EligibleCandidate eligible = EligibleCandidate.builder()
                     .id(candidate.getId())
                     .fullName(candidate.getFullName())
@@ -460,55 +283,18 @@ public class HrController {
                     .strengths(candidate.getStrengths())
                     .improvements(candidate.getImprovements())
                     .feedbackReason(candidate.getFeedbackReason())
+                    .recruitmentStage(candidate.getRecruitmentStage())
+                    .designation(candidate.getDesignation())
+                    .salaryPackage(candidate.getSalaryPackage())
+                    .joiningDate(candidate.getJoiningDate())
+                    .companyPolicies(candidate.getCompanyPolicies())
                     .build();
             eligibleCandidateRepository.save(eligible);
-            
-            // If they are shortlisted, also make sure they are saved to shortlisted collection
-            if (candidate.isShortlisted()) {
-                ShortlistedCandidate shortlisted = ShortlistedCandidate.builder()
-                        .id(candidate.getId())
-                        .fullName(candidate.getFullName())
-                        .email(candidate.getEmail())
-                        .phoneNumber(candidate.getPhoneNumber())
-                        .location(candidate.getLocation())
-                        .linkedinProfile(candidate.getLinkedinProfile())
-                        .professionalSummary(candidate.getProfessionalSummary())
-                        .educationDetails(candidate.getEducationDetails())
-                        .experienceDetails(candidate.getExperienceDetails())
-                        .skills(candidate.getSkills())
-                        .certifications(candidate.getCertifications())
-                        .projects(candidate.getProjects())
-                        .languages(candidate.getLanguages())
-                        .totalYearsExperience(candidate.getTotalYearsExperience())
-                        .atsScore(candidate.getAtsScore())
-                        .candidateStatus(candidate.getCandidateStatus())
-                        .shortlisted(candidate.isShortlisted())
-                        .resumeHash(candidate.getResumeHash())
-                        .jobDescription(candidate.getJobDescription())
-                        .resumeUploadDate(candidate.getResumeUploadDate())
-                        .matchingSkills(candidate.getMatchingSkills())
-                        .missingSkills(candidate.getMissingSkills())
-                        .strengths(candidate.getStrengths())
-                        .improvements(candidate.getImprovements())
-                        .feedbackReason(candidate.getFeedbackReason())
-                        .build();
-                shortlistedCandidateRepository.save(shortlisted);
-            }
+
+            try {
+                notEligibleCandidateRepository.deleteById(candidate.getId());
+            } catch (Exception e) {}
         } else {
-            candidate.setCandidateStatus("Not Eligible");
-            // If they were shortlisted, we should remove them from shortlist since they are now Not Eligible manually
-            candidate.setShortlisted(false);
-            candidateRepository.save(candidate);
-            
-            // Delete from eligible and shortlisted collections
-            try {
-                eligibleCandidateRepository.deleteById(id);
-            } catch (Exception e) {}
-            try {
-                shortlistedCandidateRepository.deleteById(id);
-            } catch (Exception e) {}
-            
-            // Save to not eligible collection
             NotEligibleCandidate notEligible = NotEligibleCandidate.builder()
                     .id(candidate.getId())
                     .fullName(candidate.getFullName())
@@ -535,12 +321,256 @@ public class HrController {
                     .strengths(candidate.getStrengths())
                     .improvements(candidate.getImprovements())
                     .feedbackReason(candidate.getFeedbackReason())
+                    .recruitmentStage(candidate.getRecruitmentStage())
+                    .designation(candidate.getDesignation())
+                    .salaryPackage(candidate.getSalaryPackage())
+                    .joiningDate(candidate.getJoiningDate())
+                    .companyPolicies(candidate.getCompanyPolicies())
                     .build();
             notEligibleCandidateRepository.save(notEligible);
+
+            try {
+                eligibleCandidateRepository.deleteById(candidate.getId());
+            } catch (Exception e) {}
         }
+
+        if (candidate.isShortlisted()) {
+            ShortlistedCandidate shortlisted = ShortlistedCandidate.builder()
+                    .id(candidate.getId())
+                    .fullName(candidate.getFullName())
+                    .email(candidate.getEmail())
+                    .phoneNumber(candidate.getPhoneNumber())
+                    .location(candidate.getLocation())
+                    .linkedinProfile(candidate.getLinkedinProfile())
+                    .professionalSummary(candidate.getProfessionalSummary())
+                    .educationDetails(candidate.getEducationDetails())
+                    .experienceDetails(candidate.getExperienceDetails())
+                    .skills(candidate.getSkills())
+                    .certifications(candidate.getCertifications())
+                    .projects(candidate.getProjects())
+                    .languages(candidate.getLanguages())
+                    .totalYearsExperience(candidate.getTotalYearsExperience())
+                    .atsScore(candidate.getAtsScore())
+                    .candidateStatus(candidate.getCandidateStatus())
+                    .shortlisted(candidate.isShortlisted())
+                    .resumeHash(candidate.getResumeHash())
+                    .jobDescription(candidate.getJobDescription())
+                    .resumeUploadDate(candidate.getResumeUploadDate())
+                    .matchingSkills(candidate.getMatchingSkills())
+                    .missingSkills(candidate.getMissingSkills())
+                    .strengths(candidate.getStrengths())
+                    .improvements(candidate.getImprovements())
+                    .feedbackReason(candidate.getFeedbackReason())
+                    .recruitmentStage(candidate.getRecruitmentStage())
+                    .designation(candidate.getDesignation())
+                    .salaryPackage(candidate.getSalaryPackage())
+                    .joiningDate(candidate.getJoiningDate())
+                    .companyPolicies(candidate.getCompanyPolicies())
+                    .build();
+            shortlistedCandidateRepository.save(shortlisted);
+        } else {
+            try {
+                shortlistedCandidateRepository.deleteById(candidate.getId());
+            } catch (Exception e) {}
+        }
+    }
+
+    private void sendBgvEmail(Candidate candidate) {
+        log.info("\n==================================================" +
+                 "\n=== [BGV SERVICE] Background Verification Initiated for: {}" +
+                 "\n==================================================", candidate.getEmail());
+        if (mailSender != null) {
+            try {
+                MimeMessage message = mailSender.createMimeMessage();
+                MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+                
+                helper.setTo(candidate.getEmail());
+                helper.setSubject("ResumeParser - Background Verification In Progress");
+                
+                String htmlContent = "<div style=\"font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 500px; margin: 0 auto; padding: 30px; border: 1px solid #e2e8f0; border-radius: 16px; background-color: #ffffff; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);\">"
+                        + "  <div style=\"text-align: center; margin-bottom: 25px;\">"
+                        + "    <h2 style=\"color: #4f46e5; margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -0.5px;\">Resume<span style=\"color: #0f172a;\">Parser</span></h2>"
+                        + "    <p style=\"color: #64748b; font-size: 14px; margin-top: 5px;\">Candidate Selection Pipeline</p>"
+                        + "  </div>"
+                        + "  <div style=\"border-bottom: 1px solid #f1f5f9; margin-bottom: 25px;\"></div>"
+                        + "  <p style=\"color: #334155; font-size: 16px; line-height: 1.6; margin-bottom: 20px;\">Dear " + candidate.getFullName() + ",</p>"
+                        + "  <p style=\"color: #334155; font-size: 16px; line-height: 1.6; margin-bottom: 25px;\">We are pleased to inform you that you have successfully completed the initial recruitment stages and have been shortlisted. Your <b>Background Verification (BGV)</b> process has now been initiated.</p>"
+                        + "  <p style=\"color: #334155; font-size: 16px; line-height: 1.6; margin-bottom: 25px;\">During this stage, HR and the verification team will coordinate internally to validate your educational qualifications, employment history, identity, and other required details.</p>"
+                        + "  <p style=\"color: #334155; font-size: 16px; line-height: 1.6; margin-bottom: 25px;\">No action is required from your end at this moment. We will reach out to you if we need any additional documents or clarifications. You will be notified as soon as the verification is complete.</p>"
+                        + "  <div style=\"border-bottom: 1px solid #f1f5f9; margin-bottom: 20px;\"></div>"
+                        + "  <p style=\"color: #94a3b8; font-size: 11px; text-align: center; margin: 0;\">This is an automated message, please do not reply directly.</p>"
+                        + "</div>";
+
+                helper.setText(htmlContent, true);
+                mailSender.send(message);
+                log.info("BGV email successfully sent to {}", candidate.getEmail());
+            } catch (Exception e) {
+                log.error("Failed to send BGV email to {}. Error: {}", candidate.getEmail(), e.getMessage());
+            }
+        } else {
+            log.warn("JavaMailSender bean is not configured. Skipping email sending.");
+        }
+    }
+
+    private void sendOfferEmail(Candidate candidate) {
+        log.info("\n==================================================" +
+                 "\n=== [OFFER SERVICE] Offer Letter Sent to: {}" +
+                 "\n=== Designation: {}" +
+                 "\n=== Salary: {}" +
+                 "\n==================================================", candidate.getEmail(), candidate.getDesignation(), candidate.getSalaryPackage());
+        if (mailSender != null) {
+            try {
+                MimeMessage message = mailSender.createMimeMessage();
+                MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+                
+                helper.setTo(candidate.getEmail());
+                helper.setSubject("ResumeParser - Employment Offer Letter");
+                
+                String acceptLink = "http://localhost:5173/offer-status?email=" + java.net.URLEncoder.encode(candidate.getEmail(), "UTF-8");
+                
+                String htmlContent = "<div style=\"font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 500px; margin: 0 auto; padding: 30px; border: 1px solid #e2e8f0; border-radius: 16px; background-color: #ffffff; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);\">"
+                        + "  <div style=\"text-align: center; margin-bottom: 25px;\">"
+                        + "    <h2 style=\"color: #4f46e5; margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -0.5px;\">Resume<span style=\"color: #0f172a;\">Parser</span></h2>"
+                        + "    <p style=\"color: #64748b; font-size: 14px; margin-top: 5px;\">Official Offer of Employment</p>"
+                        + "  </div>"
+                        + "  <div style=\"border-bottom: 1px solid #f1f5f9; margin-bottom: 25px;\"></div>"
+                        + "  <p style=\"color: #334155; font-size: 16px; line-height: 1.6; margin-bottom: 20px;\">Dear " + candidate.getFullName() + ",</p>"
+                        + "  <p style=\"color: #334155; font-size: 16px; line-height: 1.6; margin-bottom: 25px;\">Following the successful completion of your Background Verification (BGV), we are absolutely thrilled to offer you the position of <b>" + candidate.getDesignation() + "</b> at ResumeParser!</p>"
+                        + "  <p style=\"color: #334155; font-size: 16px; line-height: 1.6; margin-bottom: 15px;\">Below are the details of your offer:</p>"
+                        + "  <div style=\"background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin-bottom: 25px;\">"
+                        + "    <table style=\"width: 100%; border-collapse: collapse; font-size: 14px;\">"
+                        + "      <tr>"
+                        + "        <td style=\"color: #64748b; padding: 6px 0; font-weight: 500;\">Designation:</td>"
+                        + "        <td style=\"color: #0f172a; padding: 6px 0; font-weight: 600; text-align: right;\">" + candidate.getDesignation() + "</td>"
+                        + "      </tr>"
+                        + "      <tr>"
+                        + "        <td style=\"color: #64748b; padding: 6px 0; font-weight: 500;\">Salary Package:</td>"
+                        + "        <td style=\"color: #0f172a; padding: 6px 0; font-weight: 600; text-align: right;\">" + candidate.getSalaryPackage() + "</td>"
+                        + "      </tr>"
+                        + "      <tr>"
+                        + "        <td style=\"color: #64748b; padding: 6px 0; font-weight: 500;\">Joining Date:</td>"
+                        + "        <td style=\"color: #0f172a; padding: 6px 0; font-weight: 600; text-align: right;\">" + candidate.getJoiningDate() + "</td>"
+                        + "      </tr>"
+                        + "    </table>"
+                        + "  </div>"
+                        + "  <p style=\"color: #334155; font-size: 16px; line-height: 1.6; margin-bottom: 25px;\">Please click the button below to review your complete offer letter, read the company policies, and accept your offer online:</p>"
+                        + "  <div style=\"text-align: center; margin: 30px 0;\">"
+                        + "    <a href=\"" + acceptLink + "\" style=\"display: inline-block; background-color: #4f46e5; color: #ffffff; text-decoration: none; font-size: 16px; font-weight: 600; padding: 12px 30px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.2);\">Review & Accept Offer</a>"
+                        + "  </div>"
+                        + "  <p style=\"color: #64748b; font-size: 13px; line-height: 1.5; margin-bottom: 25px;\">We look forward to welcoming you to the team!</p>"
+                        + "  <div style=\"border-bottom: 1px solid #f1f5f9; margin-bottom: 20px;\"></div>"
+                        + "  <p style=\"color: #94a3b8; font-size: 11px; text-align: center; margin: 0;\">This is an automated message, please do not reply directly.</p>"
+                        + "</div>";
+
+                helper.setText(htmlContent, true);
+                mailSender.send(message);
+                log.info("Offer letter email successfully sent to {}", candidate.getEmail());
+            } catch (Exception e) {
+                log.error("Failed to send Offer email to {}. Error: {}", candidate.getEmail(), e.getMessage());
+            }
+        } else {
+            log.warn("JavaMailSender bean is not configured. Skipping email sending.");
+        }
+    }
+
+    @PutMapping("/profiles/{id}/shortlist")
+    public ResponseEntity<ApiResponse> toggleShortlist(@PathVariable String id) {
+        Candidate candidate = candidateRepository.findById(id).orElse(null);
+        if (candidate == null) {
+            return new ResponseEntity<>(new ApiResponse("Candidate not found", false), HttpStatus.NOT_FOUND);
+        }
+        
+        boolean newShortlistState = !candidate.isShortlisted();
+        candidate.setShortlisted(newShortlistState);
+        
+        if (newShortlistState) {
+            if (!"Eligible".equals(candidate.getCandidateStatus())) {
+                candidate.setCandidateStatus("Eligible");
+            }
+            candidate.setRecruitmentStage("SHORTLISTED");
+        } else {
+            if (candidate.getAtsScore() != null && candidate.getAtsScore() >= 80) {
+                candidate.setCandidateStatus("Eligible");
+            } else {
+                candidate.setCandidateStatus("Not Eligible");
+            }
+            candidate.setRecruitmentStage("APPLICATION_SUBMITTED");
+        }
+        
+        syncCandidateAcrossCollections(candidate);
+        
+        String status = candidate.isShortlisted() ? "shortlisted" : "removed from shortlist";
+        return new ResponseEntity<>(new ApiResponse("Candidate " + status, true), HttpStatus.OK);
+    }
+
+    @PutMapping("/profiles/{id}/eligible")
+    public ResponseEntity<ApiResponse> toggleEligibility(@PathVariable String id) {
+        Candidate candidate = candidateRepository.findById(id).orElse(null);
+        if (candidate == null) {
+            return new ResponseEntity<>(new ApiResponse("Candidate not found", false), HttpStatus.NOT_FOUND);
+        }
+        
+        boolean newEligibility = !"Eligible".equals(candidate.getCandidateStatus());
+        
+        if (newEligibility) {
+            candidate.setCandidateStatus("Eligible");
+        } else {
+            candidate.setCandidateStatus("Not Eligible");
+            candidate.setShortlisted(false);
+            candidate.setRecruitmentStage("APPLICATION_SUBMITTED");
+        }
+        
+        syncCandidateAcrossCollections(candidate);
         
         String status = "Eligible".equals(candidate.getCandidateStatus()) ? "marked as eligible" : "marked as not eligible";
         return new ResponseEntity<>(new ApiResponse("Candidate " + status, true), HttpStatus.OK);
+    }
+
+    @PutMapping("/profiles/{id}/stage")
+    public ResponseEntity<ApiResponse> updateStage(@PathVariable String id, @RequestBody Map<String, String> request) {
+        Candidate candidate = candidateRepository.findById(id).orElse(null);
+        if (candidate == null) {
+            return new ResponseEntity<>(new ApiResponse("Candidate not found", false), HttpStatus.NOT_FOUND);
+        }
+        
+        String stage = request.get("stage");
+        if (stage == null || stage.trim().isEmpty()) {
+            return new ResponseEntity<>(new ApiResponse("Stage is required", false), HttpStatus.BAD_REQUEST);
+        }
+        
+        candidate.setRecruitmentStage(stage);
+        syncCandidateAcrossCollections(candidate);
+        
+        if ("BGV_INITIATED".equalsIgnoreCase(stage)) {
+            sendBgvEmail(candidate);
+        }
+        
+        return new ResponseEntity<>(new ApiResponse("Candidate recruitment stage updated to " + stage, true), HttpStatus.OK);
+    }
+
+    @PostMapping("/profiles/{id}/send-offer")
+    public ResponseEntity<ApiResponse> sendOffer(@PathVariable String id, @RequestBody Map<String, String> request) {
+        Candidate candidate = candidateRepository.findById(id).orElse(null);
+        if (candidate == null) {
+            return new ResponseEntity<>(new ApiResponse("Candidate not found", false), HttpStatus.NOT_FOUND);
+        }
+        
+        String designation = request.get("designation");
+        String salaryPackage = request.get("salaryPackage");
+        String joiningDate = request.get("joiningDate");
+        String companyPolicies = request.get("companyPolicies");
+        
+        candidate.setDesignation(designation);
+        candidate.setSalaryPackage(salaryPackage);
+        candidate.setJoiningDate(joiningDate);
+        candidate.setCompanyPolicies(companyPolicies);
+        candidate.setRecruitmentStage("OFFER_SENT");
+        
+        syncCandidateAcrossCollections(candidate);
+        
+        sendOfferEmail(candidate);
+        
+        return new ResponseEntity<>(new ApiResponse("Offer sent successfully to " + candidate.getEmail(), true), HttpStatus.OK);
     }
 
     @PutMapping("/profile")

@@ -31,6 +31,13 @@ public class EligibleCandidate {
     @Builder.Default
     private String resumeUploadDate = java.time.LocalDateTime.now().toString();
 
+    @Builder.Default
+    private String recruitmentStage = "APPLICATION_SUBMITTED";
+    private String designation;
+    private String salaryPackage;
+    private String joiningDate;
+    private String companyPolicies;
+
     // ATS feedback details
     private String matchingSkills;
     private String missingSkills;

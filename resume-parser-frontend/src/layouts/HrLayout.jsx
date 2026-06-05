@@ -1,10 +1,11 @@
 import { useState, useContext } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
-import { BiLogOut, BiUser, BiMenu, BiX } from 'react-icons/bi';
+import { BiLogOut, BiUser, BiMenu, BiX, BiBell, BiCalendar, BiBriefcase } from 'react-icons/bi';
 import { AuthContext } from '../context/AuthContext';
 import api from '../services/api';
 import { toast } from 'react-toastify';
 import { motion, AnimatePresence } from 'framer-motion';
+import ThemeToggle from '../components/ThemeToggle';
 
 const HrLayout = () => {
   const { user, logout } = useContext(AuthContext);
@@ -27,7 +28,12 @@ const HrLayout = () => {
     }
   };
 
-  const menuItems = [];
+  const menuItems = [
+    { name: 'All Resumes', path: '/hr/dashboard', filter: 'all', dotColor: 'bg-blue-500', ringColor: 'ring-blue-400/30' },
+    { name: 'Eligible', path: '/hr/dashboard', filter: 'eligible', dotColor: 'bg-emerald-500', ringColor: 'ring-emerald-400/30' },
+    { name: 'Shortlisted', path: '/hr/dashboard', filter: 'shortlisted', dotColor: 'bg-amber-500', ringColor: 'ring-amber-400/30' },
+    { name: 'Not Eligible', path: '/hr/dashboard', filter: 'not_eligible', dotColor: 'bg-rose-500', ringColor: 'ring-rose-400/30' },
+  ];
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
@@ -44,52 +50,25 @@ const HrLayout = () => {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-grow py-4 px-3 space-y-1">
+      <nav className="flex-grow py-4 px-3 space-y-1.5">
         {menuItems.map((item) => {
-          const hasSubItems = item.subItems && item.subItems.length > 0;
+          const isFilterActive =
+            location.pathname === item.path &&
+            (location.state?.filter || 'all') === item.filter;
           return (
-            <div key={item.path} className="space-y-1">
-              <NavLink
-                to={item.path}
-                state={hasSubItems ? { filter: 'all' } : undefined}
-                onClick={() => setSidebarOpen(false)}
-                className={({ isActive }) =>
-                  `flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all duration-200 text-sm ${isActive
-                    ? 'bg-blue-50 text-blue-600 shadow-sm'
-                    : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
-                  }`
-                }
-              >
-                {item.icon}
-                {item.name}
-              </NavLink>
-              
-              {hasSubItems && (
-                <div className="pl-4 space-y-1 transition-all duration-200">
-                  {item.subItems.map((subItem) => {
-                    const isSubActive =
-                      location.pathname === item.path &&
-                      (location.state?.filter || 'all') === subItem.filter;
-                    return (
-                      <NavLink
-                        key={subItem.filter}
-                        to={item.path}
-                        state={{ filter: subItem.filter }}
-                        onClick={() => setSidebarOpen(false)}
-                        className={`flex items-center gap-2.5 pl-5 pr-4 py-2 rounded-lg font-medium transition-all duration-150 text-xs ${
-                          isSubActive
-                            ? 'bg-blue-50/50 text-blue-600 font-semibold shadow-sm'
-                            : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'
-                        }`}
-                      >
-                        <span className={`w-1.5 h-1.5 rounded-full ${subItem.dotColor}`} />
-                        {subItem.name}
-                      </NavLink>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
+            <NavLink
+              key={item.filter}
+              to={item.path}
+              state={{ filter: item.filter }}
+              onClick={() => setSidebarOpen(false)}
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all duration-200 text-sm hover:translate-x-1.5 hover:scale-[1.01] active:scale-[0.98] ${isFilterActive
+                ? 'bg-blue-50 text-blue-600 shadow-sm font-semibold'
+                : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+              }`}
+            >
+              <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 transition-all duration-300 ${item.dotColor} ${isFilterActive ? `ring-4 ${item.ringColor}` : ''}`} />
+              {item.name}
+            </NavLink>
           );
         })}
       </nav>
@@ -101,10 +80,9 @@ const HrLayout = () => {
             to="/hr/profile"
             onClick={() => setSidebarOpen(false)}
             className={({ isActive }) =>
-              `flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 ${
-                isActive
-                  ? 'bg-blue-50 border border-blue-100 text-blue-600'
-                  : 'hover:bg-slate-50 border border-transparent text-slate-700 hover:text-slate-900'
+              `flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 ${isActive
+                ? 'bg-blue-50 border border-blue-100 text-blue-600'
+                : 'hover:bg-slate-50 border border-transparent text-slate-700 hover:text-slate-900'
               }`
             }
           >
@@ -194,6 +172,29 @@ const HrLayout = () => {
             <h2 className="text-base md:text-xl font-bold text-slate-900">
               HR Panel
             </h2>
+          </div>
+
+          <div className="flex items-center gap-3">
+            {/* Date Badge */}
+            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-100 text-slate-600 text-xs font-semibold">
+              <BiCalendar className="text-sm text-slate-500" />
+              <span>
+                {new Date().toLocaleDateString('en-US', {
+                  weekday: 'short',
+                  month: 'short',
+                  day: 'numeric',
+                })}
+              </span>
+            </div>
+
+            {/* Notification Bell */}
+            <button className="relative p-2 rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-800 transition-all duration-200 shadow-sm" aria-label="Notifications">
+              <BiBell className="text-xl" />
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white" />
+            </button>
+
+            {/* Theme Toggle */}
+            <ThemeToggle />
           </div>
         </header>
 
