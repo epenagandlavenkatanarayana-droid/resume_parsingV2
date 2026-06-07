@@ -381,7 +381,16 @@ public class ResumeParserServiceImpl implements ResumeParserService {
     }
 
     private String callGeminiAPI(String text, String jobDescription) {
-        if (geminiApiKey == null || geminiApiKey.trim().isEmpty() || "YOUR_GEMINI_API_KEY_HERE".equals(geminiApiKey)) {
+        String key = geminiApiKey == null ? "" : geminiApiKey.trim();
+        // Clean key if it contains surrounding quotes
+        if (key.startsWith("\"") && key.endsWith("\"")) {
+            key = key.substring(1, key.length() - 1).trim();
+        }
+        if (key.startsWith("'") && key.endsWith("'")) {
+            key = key.substring(1, key.length() - 1).trim();
+        }
+
+        if (key.isEmpty() || "YOUR_GEMINI_API_KEY_HERE".equalsIgnoreCase(key)) {
             // Log a clear warning — the app still works using a basic text-based extraction fallback
             System.err.println("====== [WARNING] Gemini API key is NOT configured. Using basic text extraction fallback. ======");
             System.err.println("====== Set 'app.gemini.api-key' in application.properties with your real Gemini API key. ======");
@@ -424,7 +433,7 @@ public class ResumeParserServiceImpl implements ResumeParserService {
 
         try {
             Map response = webClient.post()
-                    .uri("/v1beta/models/gemini-1.5-flash:generateContent?key=" + geminiApiKey)
+                    .uri("/v1/models/gemini-1.5-flash:generateContent?key=" + key)
                     .contentType(MediaType.APPLICATION_JSON)
                     .bodyValue(requestBody)
                     .retrieve()
@@ -456,7 +465,8 @@ public class ResumeParserServiceImpl implements ResumeParserService {
             }
             throw new RuntimeException("Failed to extract JSON from Gemini API response");
         } catch (Exception e) {
-            throw new RuntimeException("Error communicating with AI service: " + e.getMessage(), e);
+            System.err.println("====== [ERROR] Error communicating with AI service: " + e.getMessage() + ". Falling back to basic text extraction. ======");
+            return buildFallbackJson(text);
         }
     }
 
