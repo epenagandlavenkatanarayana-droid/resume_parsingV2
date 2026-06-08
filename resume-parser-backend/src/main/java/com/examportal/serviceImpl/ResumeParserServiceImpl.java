@@ -433,7 +433,7 @@ public class ResumeParserServiceImpl implements ResumeParserService {
 
         try {
             Map response = webClient.post()
-                    .uri("/v1/models/gemini-1.5-flash:generateContent?key=" + key)
+                    .uri("/v1beta/models/gemini-1.5-flash:generateContent?key=" + key)
                     .contentType(MediaType.APPLICATION_JSON)
                     .bodyValue(requestBody)
                     .retrieve()
